@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hoangphuc_fuel_log_tree" model="ir.ui.view">
+        <field name="name">hoangphuc.fuel.log.tree</field>
+        <field name="model">hoangphuc.fuel.log</field>
+        <field name="arch" type="xml">
+            <list string="Nhật Ký Cấp Dầu &amp; Tiêu Hao Nhiên Liệu" decoration-danger="is_over_limit">
+                <field name="name"/>
+                <field name="log_date"/>
+                <field name="equipment_id"/>
+                <field name="driver_name"/>
+                <field name="previous_meter"/>
+                <field name="current_meter"/>
+                <field name="operating_units" sum="Tổng Giờ Chạy"/>
+                <field name="fuel_liters" sum="Tổng Lít Dầu"/>
+                <field name="actual_fuel_rate"/>
+                <field name="standard_fuel_rate"/>
+                <field name="variance_percent"/>
+                <field name="is_over_limit" widget="badge" decoration-danger="is_over_limit" decoration-success="not is_over_limit"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hoangphuc_fuel_log_form" model="ir.ui.view">
+        <field name="name">hoangphuc.fuel.log.form</field>
+        <field name="model">hoangphuc.fuel.log</field>
+        <field name="arch" type="xml">
+            <form string="Phiếu Cấp Dầu Mỏ Đá">
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="not is_over_limit">
+                        <strong>CẢNH BÁO BR-08:</strong> Lượng dầu tiêu hao thực tế vượt quá định mức chuẩn trên 10%! Bắt buộc phải có giải trình kỹ thuật trước khi lưu.
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="Số Phiếu"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+
+                    <group>
+                        <group string="Thông Tin Xe &amp; Thiết Bị">
+                            <field name="equipment_id"/>
+                            <field name="log_date"/>
+                            <field name="fuel_station"/>
+                            <field name="driver_name" placeholder="Họ tên lái máy / tài xế"/>
+                        </group>
+                        <group string="Chỉ Số Hoạt Động (Giờ / Km)">
+                            <field name="previous_meter"/>
+                            <field name="current_meter"/>
+                            <field name="operating_units" style="font-weight: bold; font-size: 15px;"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Cấp Nhiên Liệu &amp; Tiêu Hao Thực Tế">
+                            <field name="fuel_liters"/>
+                            <field name="actual_fuel_rate" style="font-weight: bold; color: #007bff;"/>
+                            <field name="standard_fuel_rate"/>
+                        </group>
+                        <group string="Đối Soát Định Mức (BR-08)">
+                            <field name="variance_percent" widget="progressbar"/>
+                            <field name="is_over_limit" widget="badge" decoration-danger="is_over_limit" decoration-success="not is_over_limit"/>
+                        </group>
+                    </group>
+
+                    <group string="Giải Trình Kỹ Thuật (Khi Vượt > 10%)" invisible="not is_over_limit">
+                        <field name="technical_explanation" placeholder="Ghi rõ nguyên nhân (đất đá cứng, leo dốc moong sâu, tải nặng, kim phun hao dầu...)" colspan="2"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action mở Nhật Ký Cấp Dầu -->
+    <record id="action_hoangphuc_fuel_log" model="ir.actions.act_window">
+        <field name="name">Nhật Ký Cấp Dầu &amp; Định Mức (BR-08)</field>
+        <field name="res_model">hoangphuc.fuel.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo phiếu cấp dầu mới cho xe máy mỏ!
+            </p>
+            <p>
+                Hệ thống tự động đối soát chỉ số giờ/km và cảnh báo đỏ nếu tiêu hao vượt quá 10% so với định mức kỹ thuật.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menuitem lồng vào trong Menu Bảo Trì Standard -->
+    <menuitem id="menu_hoangphuc_fuel_log"
+              name="Nhật Ký Cấp Dầu (BR-08)"
+              parent="maintenance.menu_maintenance_title"
+              action="action_hoangphuc_fuel_log"
+              sequence="30"/>
+</odoo>

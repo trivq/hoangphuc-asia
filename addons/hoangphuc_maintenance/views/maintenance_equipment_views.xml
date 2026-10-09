@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_equipment_view_form_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">maintenance.equipment.form.inherit.hoangphuc</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_lock_equipment" string="Khóa Máy (Không An Toàn - BR-02)" type="object" class="btn-danger" invisible="pre_shift_safety_status == 'locked'"/>
+                    <button name="action_unlock_equipment" string="Mở Khóa Máy Vận Hành" type="object" class="btn-success" invisible="pre_shift_safety_status != 'locked'"/>
+                    <field name="pre_shift_safety_status" widget="statusbar"/>
+                </header>
+            </xpath>
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_fuel_logs" type="object" class="oe_stat_button" icon="fa-tint">
+                    <field string="Phiếu Cấp Dầu" name="fuel_log_count" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <xpath expr="//group[@name='service_info_group']" position="after">
+                <group string="Đặc Tính Cơ Giới Mỏ &amp; Tiêu Hao Nhiên Liệu">
+                    <group>
+                        <field name="vehicle_plate" placeholder="VD: EX-01, 36C-123.45"/>
+                        <field name="equipment_quarry_type"/>
+                    </group>
+                    <group>
+                        <field name="standard_fuel_rate"/>
+                        <field name="safety_lock_reason" invisible="pre_shift_safety_status != 'locked'" placeholder="Lý do khóa máy khẩn cấp..."/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_equipment_view_tree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">maintenance.equipment.tree.inherit.hoangphuc</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="vehicle_plate" optional="show"/>
+                <field name="equipment_quarry_type" optional="show"/>
+                <field name="standard_fuel_rate" optional="show"/>
+                <field name="pre_shift_safety_status" widget="badge" optional="show"
+                       decoration-success="pre_shift_safety_status == 'safe'"
+                       decoration-warning="pre_shift_safety_status == 'warning'"
+                       decoration-danger="pre_shift_safety_status == 'locked'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

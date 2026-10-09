@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_equipment_request_view_form_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">maintenance.request.form.inherit.hoangphuc</field>
+        <field name="model">maintenance.request</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_verify_three_party_signoff" string="Nghiệm Thu 3 Bên (BR-07)" type="object" class="btn-primary"/>
+            </xpath>
+
+            <xpath expr="//field[@name='maintenance_type']" position="after">
+                <field name="request_category" widget="radio"/>
+            </xpath>
+
+            <xpath expr="//sheet/group[1]" position="after">
+                <group string="Theo Dõi Dừng Máy &amp; Sự Cố Kỹ Thuật (BR-04)">
+                    <group>
+                        <field name="downtime_minutes"/>
+                        <field name="downtime_cause"/>
+                    </group>
+                    <group>
+                        <field name="downtime_explanation" placeholder="Bắt buộc nhập giải trình kỹ thuật nếu dừng máy từ 10 phút trở lên (BR-04)..."/>
+                    </group>
+                </group>
+
+                <group string="Biên Bản Nghiệm Thu 3 Bên Trước Khi Mở Khóa Máy (BR-07)">
+                    <group string="Xác Nhận Hiện Trường">
+                        <field name="driver_confirmed"/>
+                        <field name="driver_notes" placeholder="Ý kiến lái xe sau khi chạy thử..."/>
+                        <field name="mechanic_confirmed"/>
+                    </group>
+                    <group string="Phê Duyệt Quản Đốc">
+                        <field name="manager_confirmed"/>
+                        <field name="is_three_party_approved" widget="badge"
+                               decoration-success="is_three_party_approved"
+                               decoration-danger="not is_three_party_approved"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_equipment_request_view_tree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">maintenance.request.tree.inherit.hoangphuc</field>
+        <field name="model">maintenance.request</field>
+        <field name="inherit_id" ref="maintenance.hr_equipment_request_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="request_category" optional="show"/>
+                <field name="downtime_minutes" optional="show" sum="Tổng phút dừng máy"/>
+                <field name="is_three_party_approved" widget="badge" optional="show"
+                       decoration-success="is_three_party_approved"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

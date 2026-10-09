@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Kế thừa Form View của Stock Picking để thêm tính năng Trạm Cân & Mỏ Đá -->
+    <record id="view_picking_form_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.hoangphuc</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Thêm nút In Phiếu Cân và Áp Số Lượng Cân trên Header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_print_scale_ticket" string="In Phiếu Cân" type="object" class="btn-secondary" icon="fa-print" invisible="not net_weight"/>
+                <button name="action_apply_scale_to_moves" string="Áp Khối Lượng Cân" type="object" class="btn-primary" icon="fa-balance-scale" invisible="not net_weight"/>
+            </xpath>
+
+            <!-- Thêm Tab Trạm Cân Mỏ Đá vào Notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Trạm Cân Mỏ Đá" name="scale_info">
+                    <group>
+                        <group string="Thông Tin Phương Tiện &amp; Cân">
+                            <field name="is_scale_picking" widget="boolean_toggle"/>
+                            <field name="vehicle_plate" placeholder="VD: 36C-123.45"/>
+                            <field name="driver_name" placeholder="Họ tên tài xế"/>
+                            <field name="weigh_scale_number"/>
+                            <field name="crushing_plant"/>
+                        </group>
+                        <group string="Khối Lượng &amp; Thể Tích Quy Đổi">
+                            <field name="tare_weight"/>
+                            <field name="gross_weight"/>
+                            <div class="o_td_label">
+                                <label for="net_weight" string="Khối Lượng Tịnh (Kg)" style="font-weight: bold; color: #007bff;"/>
+                            </div>
+                            <field name="net_weight" nolabel="1" style="font-weight: bold; font-size: 16px; color: #007bff;"/>
+                            <field name="density"/>
+                            <div class="o_td_label">
+                                <label for="volume_m3" string="Thể Tích Quy Đổi (m³)" style="font-weight: bold; color: #28a745;"/>
+                            </div>
+                            <field name="volume_m3" nolabel="1" style="font-weight: bold; font-size: 16px; color: #28a745;"/>
+                            <field name="weigh_time_first"/>
+                            <field name="weigh_time_second"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page string="Thông Tin Mỏ (VLNCN / Phụ Tùng)" name="quarry_extra_info">
+                    <group>
+                        <group string="Xuất Cấp Vật Tư Phụ Tùng (BR-10)">
+                            <field name="equipment_id" placeholder="Chọn thiết bị / xe máy mỏ nhận phụ tùng"/>
+                        </group>
+                        <group string="Xuất Cấp Vật Liệu Nổ Công Nghiệp">
+                            <field name="blasting_passport_code" placeholder="Mã hộ chiếu / phương án nổ mìn"/>
+                            <field name="blasting_commander" placeholder="Chỉ huy nổ mìn chịu trách nhiệm"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Kế thừa Tree/List View của Stock Picking để hiển thị nhanh BKS và Khối Lượng Tịnh -->
+    <record id="vpicktree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">stock.picking.tree.inherit.hoangphuc</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="vehicle_plate" optional="show"/>
+                <field name="net_weight" optional="show" sum="Tổng Kg"/>
+                <field name="volume_m3" optional="show" sum="Tổng m³"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

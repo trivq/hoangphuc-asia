@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.hoangphuc</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Thêm các nút quy trình duyệt phân cấp tài chính BR-03 -->
+            <xpath expr="//header" position="inside">
+                <button name="action_submit_for_approval" string="Trình Phê Duyệt" type="object" class="btn-primary" invisible="approval_state != 'draft'"/>
+                <button name="action_gm_approve" string="TGĐ Phê Duyệt" type="object" class="btn-success" invisible="approval_state != 'waiting_gm'"/>
+                <button name="action_chairman_approve" string="Chủ Tịch HĐQT Phê Duyệt" type="object" class="btn-success" invisible="approval_state != 'waiting_chairman'"/>
+                <button name="action_reject" string="Từ Chối" type="object" class="btn-danger" invisible="approval_state not in ['waiting_gm', 'waiting_chairman']"/>
+                <button name="action_reset_draft" string="Làm Lại Nháp" type="object" class="btn-secondary" invisible="approval_state != 'rejected'"/>
+            </xpath>
+
+            <!-- Thêm trường thiết bị mỏ chịu chi phí BR-10 sau partner_id -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="equipment_id" placeholder="Chọn thiết bị / xe máy mỏ chịu chi phí"/>
+                <field name="approval_tier" widget="badge" 
+                       decoration-info="approval_tier == 'tier_1'" 
+                       decoration-warning="approval_tier == 'tier_2'"/>
+                <field name="approval_state" widget="badge" 
+                       decoration-muted="approval_state == 'draft'" 
+                       decoration-warning="approval_state in ['waiting_gm', 'waiting_chairman']" 
+                       decoration-success="approval_state == 'approved'" 
+                       decoration-danger="approval_state == 'rejected'"/>
+                <field name="supplier_payment_term_type"/>
+            </xpath>
+
+            <!-- Thêm 2 Tab: So Sánh 3 Báo Giá và Nghiệm Thu Hiện Trường -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Quy Tắc 3 Báo Giá &amp; Chỉ Định Thầu (BR-02)" name="quotes_comparison">
+                    <group>
+                        <group string="Mua 1 Nguồn Duy Nhất (Chỉ Định Thầu)">
+                            <field name="is_single_source" widget="boolean_toggle"/>
+                            <field name="single_source_reason" invisible="not is_single_source" required="is_single_source" placeholder="Giải trình lý do kỹ thuật độc quyền hoặc sự cố khẩn cấp..."/>
+                        </group>
+                    </group>
+                    <group string="So Sánh 3 Báo Giá Cạnh Tranh (Nếu Có >= 2 Nguồn)" invisible="is_single_source">
+                        <group string="Báo Giá 1 (Được Chọn)">
+                            <field name="quote_source_1" placeholder="Tên NCC 1"/>
+                            <field name="quote_price_1"/>
+                        </group>
+                        <group string="Báo Giá 2">
+                            <field name="quote_source_2" placeholder="Tên NCC 2"/>
+                            <field name="quote_price_2"/>
+                        </group>
+                        <group string="Báo Giá 3">
+                            <field name="quote_source_3" placeholder="Tên NCC 3"/>
+                            <field name="quote_price_3"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page string="Nghiệm Thu Bàn Giao Hiện Trường (BR-05)" name="field_inspection">
+                    <group>
+                        <group string="Biên Bản Kiểm Tra Thực Tế">
+                            <field name="field_inspected" widget="boolean_toggle"/>
+                            <field name="field_inspector_id"/>
+                        </group>
+                        <group string="Hình Ảnh Hiện Trường Moong Mỏ / Xưởng">
+                            <field name="field_inspection_photo" widget="image" class="oe_avatar" options="{'size': [200, 200]}"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Kế thừa Tree/List View của Purchase Order để hiển thị cột Thiết Bị & Cấp Duyệt -->
+    <record id="purchase_order_view_tree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">purchase.order.tree.inherit.hoangphuc</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="equipment_id" optional="show"/>
+                <field name="approval_state" widget="badge" optional="show"
+                       decoration-warning="approval_state in ['waiting_gm', 'waiting_chairman']"
+                       decoration-success="approval_state == 'approved'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

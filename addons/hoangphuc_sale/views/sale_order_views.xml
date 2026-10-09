@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.hoangphuc</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="project_name" placeholder="Tên công trình / dự án nhận đá"/>
+                <field name="contract_ref" placeholder="Số hợp đồng mỏ đá"/>
+                <field name="quarry_uom_type"/>
+                <field name="credit_warning_msg" invisible="not credit_warning_msg" widget="badge" decoration-danger="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

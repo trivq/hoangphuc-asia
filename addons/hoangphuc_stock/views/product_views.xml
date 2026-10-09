@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.hoangphuc</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_information']" position="after">
+                <page string="Đặc Tính Mỏ Đá / VLNCN" name="quarry_attributes">
+                    <group>
+                        <group string="Phân Loại Đặc Thù Mỏ">
+                            <field name="is_quarry_stone"/>
+                            <field name="is_explosive"/>
+                            <field name="is_quarry_spare_part"/>
+                        </group>
+                        <group string="Tỷ Trọng Quy Đổi (Khối Lượng &lt;-&gt; Thể Tích)">
+                            <field name="density" invisible="not is_quarry_stone"/>
+                            <div class="text-muted" colspan="2" invisible="not is_quarry_stone">
+                                <i>Tỷ trọng chuẩn: Đá 1x2 (~1.55 tấn/m³), Đá 4x6 (~1.60 tấn/m³), Đá Base (~1.65 tấn/m³).</i>
+                            </div>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

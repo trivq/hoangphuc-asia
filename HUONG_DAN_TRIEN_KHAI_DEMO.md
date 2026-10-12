@@ -65,7 +65,13 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 ## III. KỊCH BẢN DEMO TỪNG BƯỚC CHO KHÁCH HÀNG
 
 ### Kịch bản 1: Cân Xe Xuất Bán Đá & In Phiếu Cân Điện Tử (Sóng 1 & Sóng 2)
-1. **Truy cập**: Đăng nhập [http://localhost:10020](http://localhost:10020), vào ứng dụng **Kho vận (Inventory)** → chọn **Phiếu Giao Hàng (Delivery Orders)**.
+> 📋 **Căn cứ tài liệu quy trình**: Sheet **[Xuất kho thành phẩm](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L67-L145)** (kết hợp cấp liệu từ Sheet **[Nhập kho thành phẩm](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L151-L225)**)
+> - **Nghiệp vụ mỏ thực tế**: Cân xe thành phẩm đầu ra (khối lượng bì và tổng), quy đổi thể tích $m^3$, lập phiếu bán hàng và giao đúng chủng loại đá theo đơn hàng (Mục 4: Bước 2, Bước 3-4, Bước 5).
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-01**: Kiểm soát khối lượng xuất hàng không vượt quá hạn mức mua hàng & số dư ký quỹ của khách hàng.
+>   - **Mục 6 (Trường dữ liệu)**: Biển kiểm soát xe, Tên lái xe, Giờ vào/ra mỏ, Chủng loại đá, Khối lượng bì ($kg$), Khối lượng tổng ($kg$), Tỷ trọng quy đổi linh hoạt theo hợp đồng ($tấn/m^3$), Thể tích quy đổi ($m^3$).
+>   - **Mục 7 (Biểu mẫu & chứng từ)**: Phiếu Bán Hàng / Phiếu cân xe điện tử in song ngữ có chữ ký các bên.
+1. **Truy cập**: Đăng nhập [http://localhost:10017](http://localhost:10017) (Odoo 20 CE, db: `hoangphuc_db`), vào ứng dụng **Kho vận (Inventory)** → chọn **Phiếu Giao Hàng (Delivery Orders)**.
 2. **Mở phiếu mẫu**: Mở phiếu xuất kho cho xe `36C-284.91` (Khách hàng: *Công ty CP Xây Dựng & Cầu Đường 47*).
 3. **Thao tác Trạm Cân (Tab "Trạm Cân Mỏ Đá")**:
    - Biển số xe: `36C-284.91`, Tài xế: `Nguyễn Văn Mạnh`.
@@ -81,6 +87,12 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 ---
 
 ### Kịch bản 2: Bán Hàng Dự Án & Cảnh Báo Công Nợ Khách Hàng (Sóng 2)
+> 📋 **Căn cứ tài liệu quy trình**: Sheet **[Bán hàng & Thu hồi Công nợ](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L437-L550)**
+> - **Nghiệp vụ mỏ thực tế**: Quản lý bán hàng dự án/hợp đồng đá mỏ, theo dõi tiến độ cấp đá, đối soát sản lượng trạm cân và kiểm soát thu hồi tiền cọc/công nợ (Mục 4: Lập báo giá & hợp đồng Bước 1-8; Theo dõi hợp đồng & công nợ Bước 9-15).
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-01**: Khi khách hàng lấy hết số tiền đặt hàng thì không cho lấy hàng (cảnh báo nộp thêm tiền mới cho lấy hàng tiếp).
+>   - **BR-02**: Không cho lấy hàng nếu chưa nộp tiền ký quỹ/tiền cọc (cảnh báo đỏ để tránh rủi ro thất thoát doanh thu thành phẩm).
+>   - **Mục 6 & Mục 7**: Hồ sơ khách hàng, mã số thuế, đơn giá theo Tấn/$m^3$, biên bản đối chiếu công nợ, hợp đồng kinh tế theo dự án công trình.
 1. **Truy cập**: Vào ứng dụng **Bán hàng (Sales)** → **Đơn Bán Hàng (Orders)**.
 2. **Xem đơn hàng dự án**: Mở đơn hàng `HĐ-47/2026/HP-DA`:
    - Dự án công trình: `Dự Án Cao Tốc Bắc - Nam (Gói Thầu XL-02)`.
@@ -93,6 +105,16 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 ---
 
 ### Kịch bản 3: Mua Sắm Vật Tư - Gắn Đích Danh Thiết Bị & Duyệt Đa Cấp (Sóng 2)
+> 📋 **Căn cứ tài liệu quy trình**: Sheet **[Mua hàng](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L1045-L1130)**
+> - **Nghiệp vụ mỏ thực tế**: Lập kế hoạch và mua sắm vật tư, phụ tùng xe máy, lốp xe ben, vật tư sửa chữa trạm nghiền phục vụ hoạt động sản xuất liên tục tại mỏ (Mục 4: Bước 1 đến Bước 10).
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-10**: Bắt buộc gắn đích danh xe/máy móc/thiết bị (`equipment_id`) hoặc bộ phận chịu chi phí để hạch toán giá thành cơ giới.
+>   - **BR-02 & BR-04**: Bắt buộc khảo sát thu thập 3 báo giá cạnh tranh; đánh giá giá, chất lượng, thời gian giao hàng, bảo hành; giải trình văn bản nếu mua 1 nguồn duy nhất (chỉ định thầu).
+>   - **BR-03**: Phân cấp thẩm quyền phê duyệt tài chính chặt chẽ:
+>     * Đơn hàng $\le 20.000.000$ VNĐ: TGĐ phê duyệt.
+>     * Đơn hàng $> 20.000.000$ VNĐ: TGĐ rà soát -> Chủ tịch HĐQT phê duyệt cuối cùng.
+>   - **BR-05**: Bắt buộc nghiệm thu thực tế tại hiện trường (moong mỏ, xưởng cơ điện), ký nhận bàn giao và đính kèm ảnh chụp hiện trường.
+>   - **BR-08**: Quản lý chính sách công nợ nhà cung cấp đặc thù (Túy Hoài, Đức Soạn, Tiến Lốp nợ gối đầu 1 tháng).
 1. **Truy cập**: Vào ứng dụng **Mua hàng (Purchase)** → **Đơn Mua Hàng (Purchase Orders)**.
 2. **Trường hợp A: Đơn hàng <= 20 Triệu VNĐ (TGĐ Phê Duyệt - BR-03)**:
    - Mở đơn mua phụ tùng máy xúc `EX-01` (Giá trị: `14,500,000 VNĐ`).
@@ -112,6 +134,14 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 ---
 
 ### Kịch bản 4: Quản Lý Cơ Giới Mỏ, Downtime & Nghiệm Thu 3 Bên (Sóng 2)
+> 📋 **Căn cứ tài liệu quy trình**: Sheet **[QL Máy móc, Thiết bị SX](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L926-L1010)**
+> - **Nghiệp vụ mỏ thực tế**: Quản lý hồ sơ cơ giới mỏ (máy xúc đào, máy ủi, xe ben, trạm nghiền), kiểm tra an toàn đầu ca, xử lý sự cố đột xuất và kiểm soát thời gian dừng máy Downtime (Mục 4: Bước 1 đến Bước 6).
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-01**: Mỗi thiết bị có một mã định danh duy nhất (VD: Máy xúc `EX-01`, `EX-02`), hồ sơ lý lịch kỹ thuật và phân công người vận hành.
+>   - **BR-02**: Kiểm tra an toàn đầu ca — nút **Khóa máy khẩn cấp** khi phát hiện sự cố nguy hiểm, nghiêm cấm vận hành khi chưa đảm bảo an toàn.
+>   - **BR-10**: Phân loại rạch ròi loại công việc: **Bảo dưỡng định kỳ** vs **Sửa chữa đột xuất (sự cố/hỏng hóc)** để thống kê chính xác chi phí & downtime.
+>   - **BR-04**: Theo dõi Downtime — thời gian dừng máy $\ge 10$ phút bắt buộc nhập mã lỗi sự cố và giải trình kỹ thuật chi tiết.
+>   - **BR-07**: Biên bản nghiệm thu 3 bên — chỉ mở khóa thiết bị vận hành trở lại sau khi chạy thử đạt yêu cầu và đủ 3 bên ký xác nhận: Lái xe/người vận hành thử, Thợ sửa chữa, Quản đốc mỏ.
 1. **Truy cập**: Vào ứng dụng **Bảo trì (Maintenance)** → **Thiết bị (Equipment)**.
 2. **Khóa máy khẩn cấp khi phát hiện lỗi đầu ca (BR-02)**:
    - Mở máy xúc `EX-02` (Hitachi Zaxis 350).
@@ -131,6 +161,12 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 ---
 
 ### Kịch bản 5: Nhật Ký Cấp Dầu & Cảnh Báo Vượt Định Mức >10% (BR-08)
+> 📋 **Căn cứ tài liệu quy trình**: Sheet **[QL Máy móc, Thiết bị SX](file:///home/ubuntu/source/HoangPhuc/Tap_Tai_Lieu_Quy_Trinh.md#L926-L1010)**
+> - **Nghiệp vụ mỏ thực tế**: Nhật ký cấp phát nhiên liệu (Dầu DO) tại moong/bãi và đối soát tỷ lệ tiêu hao theo giờ máy vận hành (Mục 4: Bước 3 & Bước 6).
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-08**: Định mức tiêu hao nhiên liệu chuẩn (Lít/giờ - $L/h$). Chốt số giờ máy (đồng hồ táp-lô), tính lượng tiêu hao thực tế so với định mức tiêu chuẩn.
+>   - **Cảnh báo đỏ vượt định mức $>10\%$ (BR-08)**: Tự động kích hoạt cảnh báo đỏ khi tiêu hao vượt $>10\%$, bắt buộc phải có văn bản giải trình kỹ thuật (địa hình dốc sình lầy, ép ga tải nặng...) trước khi cho phép lưu phiếu.
+>   - **BR-09**: Nhật trình và cấp phát nhiên liệu đã chốt không được sửa đè, lưu vết lịch sử phục vụ kiểm toán nội bộ.
 1. **Truy cập**: Vào menu **Bảo trì (Maintenance)** → chọn menu **"Nhật Ký Cấp Dầu (BR-08)"**.
 2. **Trường hợp bình thường**:
    - Mở phiếu cấp dầu Máy xúc `EX-01`: Chạy 10 giờ, cấp 320 lít dầu → Tiêu hao: `32.0 L/h` (Định mức chuẩn: 32.5 L/h, chênh lệch -1.5% → Huy hiệu màu xanh an toàn).

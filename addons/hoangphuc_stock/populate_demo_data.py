@@ -5,6 +5,9 @@ def populate_demo_data(cr):
     env = api.Environment(cr, SUPERUSER_ID, {})
     company = env.ref('base.main_company')
     vnd_currency = env.ref('base.VND', raise_if_not_found=False) or company.currency_id
+    std_layout = env.ref('web.external_layout_standard', raise_if_not_found=False)
+    if std_layout and not company.external_report_layout_id:
+        company.external_report_layout_id = std_layout
 
     # 1. Products
     prod_tmpl_obj = env['product.template']

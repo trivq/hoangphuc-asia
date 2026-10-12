@@ -123,17 +123,27 @@ class StockPicking(models.Model):
             raise UserError(_('Khối lượng tịnh phải lớn hơn 0 trước khi cập nhật!'))
 
         for move in self.move_ids:
-            uom = getattr(move, 'uom_id', False) or getattr(move, 'product_uom', False)
+            # Tương thích đa phiên bản Odoo (Odoo 20: uom_id, Odoo 19/18: product_uom, fallback: product_id.uom_id)
+            uom = (
+                move.uom_id if 'uom_id' in move._fields
+                else move.product_uom if 'product_uom' in move._fields
+                else (move.product_id.uom_id if move.product_id else False)
+            )
             uom_name = (uom.name or '').lower() if uom else ''
+            qty = 0.0
             if 'm3' in uom_name or 'm³' in uom_name or 'khối' in uom_name:
-                move.quantity = self.volume_m3
+                qty = self.volume_m3
             elif 'tấn' in uom_name or 'tan' in uom_name:
-                move.quantity = round(self.net_weight / 1000.0, 3)
+                qty = round(self.net_weight / 1000.0, 3)
             elif 'kg' in uom_name:
-                move.quantity = self.net_weight
+                qty = self.net_weight
             else:
                 # Default to tons if stone
-                move.quantity = round(self.net_weight / 1000.0, 3)
+                qty = round(self.net_weight / 1000.0, 3)
+
+            move.quantity = qty
+            if 'product_uom_qty' in move._fields and not move.product_uom_qty:
+                move.product_uom_qty = qty
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',

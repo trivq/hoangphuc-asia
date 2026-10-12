@@ -75,14 +75,14 @@ class StockPicking(models.Model):
         ('quarry_pit', 'Moong Khai Thác Mỏ')
     ], string='Trạm Nghiền / Vị Trí Cấp Liệu', tracking=True)
 
-    # Trường dùng cho Xuất kho Vật tư phụ tùng (Sóng 1 & Sóng 2)
+    # Trường dùng cho Xuất kho Vật tư phụ tùng
     equipment_id = fields.Many2one(
         'maintenance.equipment',
         string='Thiết Bị / Xe Cơ Giới Chịu Chi Phí',
         help='Đích danh máy xúc, xe ben hoặc trạm nghiền nhận phụ tùng (BR-10).'
     )
 
-    # Trường dùng cho Xuất kho Vật liệu nổ (Sóng 1)
+    # Trường dùng cho Xuất kho Vật liệu nổ
     blasting_passport_code = fields.Char(
         string='Mã Hộ Chiếu Nổ Mìn',
         help='Mã phương án / hộ chiếu khoan nổ mìn được phê duyệt.'

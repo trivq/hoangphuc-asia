@@ -64,6 +64,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="vehicle_plate" optional="show"/>
+                <field name="equipment_id" optional="show" string="Thiết Bị Nhận VT"/>
+                <field name="blasting_passport_code" optional="show" string="Hộ Chiếu Nổ Mìn"/>
                 <field name="net_weight" optional="show" sum="Tổng Kg"/>
                 <field name="volume_m3" optional="show" sum="Tổng m³"/>
             </xpath>

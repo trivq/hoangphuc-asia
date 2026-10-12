@@ -1,5 +1,5 @@
 {
-    'name': 'Hoàng Phúc - Quản Lý Kho & Trạm Cân Mỏ Đá (Sóng 1)',
+    'name': 'Hoàng Phúc - Quản Lý Kho & Trạm Cân Mỏ Đá',
     'version': '1.0.0',
     'category': 'Inventory/Quarry',
     'summary': 'Tích hợp Trạm cân xe vào Stock Picking, quy đổi tỷ trọng Tấn/m3, quản lý kho VLNCN và cấp phát vật tư',

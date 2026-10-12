@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="stock.view_production_lot_form"/>
         <field name="arch" type="xml">
             <xpath expr="//group[@name='main_group']" position="after">
-                <group string="Hồ Sơ An Toàn &amp; Pháp Lý Lô VLNCN (Sóng 1)">
+                <group string="Hồ Sơ An Toàn &amp; Pháp Lý Lô VLNCN">
                     <group>
                         <field name="mfg_date"/>
                         <field name="exp_date"/>
@@ -16,6 +16,19 @@
                         <field name="license_number" placeholder="Số GP sử dụng / giấy phép vận chuyển"/>
                     </group>
                 </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_production_lot_tree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">stock.lot.tree.inherit.hoangphuc</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='create_date']" position="before">
+                <field name="mfg_date" optional="show"/>
+                <field name="exp_date" optional="show"/>
+                <field name="manufacturer" optional="show"/>
+                <field name="license_number" optional="show"/>
             </xpath>
         </field>
     </record>

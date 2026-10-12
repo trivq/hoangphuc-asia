@@ -1,5 +1,5 @@
 {
-    'name': 'Hoàng Phúc - Mua Hàng & Phê Duyệt Vật Tư Mỏ (Sóng 2)',
+    'name': 'Hoàng Phúc - Mua Hàng & Phê Duyệt Vật Tư Mỏ',
     'version': '1.0.0',
     'category': 'Purchases/Quarry',
     'summary': 'Gắn đích danh thiết bị chịu chi phí, quy tắc 3 báo giá, phân cấp duyệt <=20M TGĐ và >20M Chủ tịch HĐQT, nghiệm thu hiện trường',

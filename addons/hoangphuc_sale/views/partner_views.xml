@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Công Nợ Mỏ Đá (Sóng 2)" name="quarry_credit_tab">
+                <page string="Công Nợ Mỏ Đá" name="quarry_credit_tab">
                     <group>
                         <group string="Chính Sách Thanh Toán Mỏ">
                             <field name="quarry_customer_type" widget="radio"/>

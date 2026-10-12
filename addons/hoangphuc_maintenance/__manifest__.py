@@ -1,5 +1,5 @@
 {
-    'name': 'Hoàng Phúc - Thiết Bị & Bảo Trì Cơ Giới Mỏ (Sóng 2)',
+    'name': 'Hoàng Phúc - Thiết Bị & Bảo Trì Cơ Giới Mỏ',
     'version': '1.0.0',
     'category': 'Manufacturing/Maintenance',
     'summary': 'Định mức nhiên liệu, dừng máy >=10 phút, nghiệm thu 3 bên, đối soát tiêu hao dầu cảnh báo >10%',

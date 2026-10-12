@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="stock.view_warehouse"/>
         <field name="arch" type="xml">
             <xpath expr="//group[1]" position="after">
-                <group string="Quy Chuẩn An Toàn &amp; Pháp Lý Kho VLNCN (Sóng 1)">
+                <group string="Quy Chuẩn An Toàn &amp; Pháp Lý Kho VLNCN">
                     <group>
                         <field name="is_explosive_warehouse"/>
                     </group>
@@ -15,6 +15,18 @@
                         <field name="max_detonators_pcs"/>
                     </group>
                 </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_warehouse_tree_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">stock.warehouse.tree.inherit.hoangphuc</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lot_stock_id']" position="after">
+                <field name="is_explosive_warehouse" optional="show"/>
+                <field name="max_explosives_kg" optional="show"/>
+                <field name="max_detonators_pcs" optional="show"/>
             </xpath>
         </field>
     </record>

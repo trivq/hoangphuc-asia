@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Quản Lý Kho & Trạm Cân Mỏ Đá (Sóng 1)',
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'category': 'Inventory/Quarry',
     'summary': 'Tích hợp Trạm cân xe vào Stock Picking, quy đổi tỷ trọng Tấn/m3, quản lý kho VLNCN và cấp phát vật tư',
     'description': """
@@ -18,11 +18,10 @@ Mở rộng Ứng dụng Kho (Inventory / Stock) cho Mỏ đá Hoàng Phúc:
 3. Xuất kho vật tư, phụ tùng thay thế:
    - Gắn đích danh thiết bị mỏ chịu chi phí (equipment_id).
     """,
-    'author': 'Hoang Phuc Mining Solution',
+    'author': 'Tri Vo - Paracel',
     'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'stock', 'product'],
     'data': [
-        'security/ir.model.access.csv',
         'views/stock_picking_views.xml',
         'views/product_views.xml',
         'views/stock_lot_views.xml',

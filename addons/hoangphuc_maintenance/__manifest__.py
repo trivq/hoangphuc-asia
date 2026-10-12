@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Thiết Bị & Bảo Trì Cơ Giới Mỏ (Sóng 2)',
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'category': 'Manufacturing/Maintenance',
     'summary': 'Định mức nhiên liệu, dừng máy >=10 phút, nghiệm thu 3 bên, đối soát tiêu hao dầu cảnh báo >10%',
     'description': """
@@ -18,11 +18,11 @@ Mở rộng Ứng dụng Bảo Trì (Maintenance) cho Mỏ đá Hoàng Phúc:
    - Tính toán mức tiêu hao thực tế (L/h) so với định mức chuẩn.
    - Cảnh báo đỏ nếu chênh lệch vượt quá 10% (BR-08) và bắt buộc giải trình kỹ thuật.
     """,
-    'author': 'Hoang Phuc Mining Solution',
+    'author': 'Tri Vo - Paracel',
     'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'maintenance'],
     'data': [
-        'security/ir.model.access.csv',
+        'security/ir.access.csv',
         'views/maintenance_equipment_views.xml',
         'views/maintenance_request_views.xml',
         'views/fuel_log_views.xml',

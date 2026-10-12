@@ -123,7 +123,8 @@ class StockPicking(models.Model):
             raise UserError(_('Khối lượng tịnh phải lớn hơn 0 trước khi cập nhật!'))
 
         for move in self.move_ids:
-            uom_name = (move.product_uom.name or '').lower()
+            uom = getattr(move, 'uom_id', False) or getattr(move, 'product_uom', False)
+            uom_name = (uom.name or '').lower() if uom else ''
             if 'm3' in uom_name or 'm³' in uom_name or 'khối' in uom_name:
                 move.quantity = self.volume_m3
             elif 'tấn' in uom_name or 'tan' in uom_name:

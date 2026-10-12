@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Mua Hàng & Phê Duyệt Vật Tư Mỏ (Sóng 2)',
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'category': 'Purchases/Quarry',
     'summary': 'Gắn đích danh thiết bị chịu chi phí, quy tắc 3 báo giá, phân cấp duyệt <=20M TGĐ và >20M Chủ tịch HĐQT, nghiệm thu hiện trường',
     'description': """
@@ -22,7 +22,6 @@ Mở rộng Ứng dụng Mua Hàng (Purchase) cho Mỏ đá Hoàng Phúc:
     'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'purchase', 'maintenance'],
     'data': [
-        'security/ir.model.access.csv',
         'views/purchase_order_views.xml',
     ],
     'installable': True,

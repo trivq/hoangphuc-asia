@@ -56,6 +56,7 @@ odoo/run.sh
 odoo/odoo.conf
 run.sh
 
+/config
 #Docker
 docker-compose.yml
 Dockerfile

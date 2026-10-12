@@ -1,0 +1,3 @@
+id,name,model_id,group_id/id,operation,domain
+access_hoangphuc_fuel_log_user,hoangphuc.fuel.log.user,hoangphuc.fuel.log,base.group_user,crud,
+access_hoangphuc_fuel_log_manager,hoangphuc.fuel.log.manager,hoangphuc.fuel.log,base.group_system,crud,

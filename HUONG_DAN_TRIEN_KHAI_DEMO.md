@@ -8,11 +8,28 @@ Tài liệu này hướng dẫn chi tiết cách vận hành và demo bộ giả
 
 ## I. MÔI TRƯỜNG VẬN HÀNH & KIẾN TRÚC HỆ THỐNG
 
-### 1. Môi trường triển khai Odoo 19 EE:
-- **Thư mục cài đặt**: `/home/ubuntu/source/odoo19-docker-setup`
-- **Địa chỉ truy cập Web**: [http://localhost:10020](http://localhost:10020)
-- **Tên cơ sở dữ liệu**: `ok` (Odoo 19 Enterprise)
-- **Tài khoản đăng nhập**: `admin` / `admin` (hoặc mật khẩu quản trị hệ thống)
+### 1. Môi trường triển khai:
+- **Môi trường Odoo 20 Community Edition (CE) (Docker Compose tại thư mục HoangPhuc)**:
+  - **Thư mục cài đặt**: `/home/ubuntu/source/HoangPhuc`
+  - **Địa chỉ truy cập Web**: [http://localhost:10017](http://localhost:10017)
+  - **Tên cơ sở dữ liệu**: `hoangphuc_db`
+  - **Tài khoản đăng nhập**: `admin` / `admin`
+  - **Lệnh khởi động**: `docker compose up -d`
+  - **Lệnh nạp dữ liệu demo**:
+    ```bash
+    docker compose exec -T web odoo shell -d hoangphuc_db --no-http << 'EOF'
+    with open('/mnt/extra-addons/hoangphuc_stock/populate_demo_data.py') as f:
+        exec(f.read())
+    populate_demo_data(env.cr)
+    env.cr.commit()
+    EOF
+    ```
+
+- **Môi trường Odoo 19 Enterprise (EE) (Setup tại odoo19-docker-setup)**:
+  - **Thư mục cài đặt**: `/home/ubuntu/source/odoo19-docker-setup`
+  - **Địa chỉ truy cập Web**: [http://localhost:10020](http://localhost:10020)
+  - **Tên cơ sở dữ liệu**: `ok` (Odoo 19 Enterprise)
+  - **Tài khoản đăng nhập**: `admin` / `admin`
 
 ### 2. Kiến trúc Module Custom (Kế thừa trực tiếp Odoo Standard):
 Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **mở rộng trực tiếp các module nghiệp vụ cốt lõi của Odoo 19**:

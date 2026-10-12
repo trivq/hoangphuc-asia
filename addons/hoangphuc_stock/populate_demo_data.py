@@ -179,6 +179,7 @@ def populate_demo_data(cr):
     picking_obj = env['stock.picking']
     picking_type_out = env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
     picking_type_in = env['stock.picking.type'].search([('code', '=', 'incoming')], limit=1)
+    move_uom_field = 'uom_id' if 'uom_id' in env['stock.move']._fields else 'product_uom'
 
     # Scale ticket 1: Xuất đá thành phẩm xe Howo 36C-284.91
     existing_pick = picking_obj.search([('vehicle_plate', '=', '36C-284.91')], limit=1)
@@ -201,7 +202,7 @@ def populate_demo_data(cr):
                     'product_id': products['Đá 1x2 (Đá Bê Tông)'].id,
                     'product_uom_qty': 24.20,
                     'quantity': 24.20,
-                    'product_uom': products['Đá 1x2 (Đá Bê Tông)'].uom_id.id,
+                    move_uom_field: products['Đá 1x2 (Đá Bê Tông)'].uom_id.id,
                     'location_id': picking_type_out.default_location_src_id.id,
                     'location_dest_id': customer_1.property_stock_customer.id,
                 })
@@ -228,7 +229,7 @@ def populate_demo_data(cr):
                     'product_id': products['Đá Hộc Khai Thác Mỏ'].id,
                     'product_uom_qty': 31.20,
                     'quantity': 31.20,
-                    'product_uom': products['Đá Hộc Khai Thác Mỏ'].uom_id.id,
+                    move_uom_field: products['Đá Hộc Khai Thác Mỏ'].uom_id.id,
                     'location_id': picking_type_in.default_location_src_id.id,
                     'location_dest_id': picking_type_in.default_location_dest_id.id,
                 })

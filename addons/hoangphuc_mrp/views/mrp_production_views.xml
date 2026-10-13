@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Kế thừa Form View Lệnh Sản Xuất để thêm Quản Lý Trạm Nghiền & Mỏ Đá -->
+    <record id="mrp_production_form_view_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">mrp.production.form.view.inherit.hoangphuc</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Thêm nút Áp Khối Lượng Cấp Liệu trên Header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_quick_fill_scale_input" string="Áp Đá Thô Cấp Liệu" type="object" class="btn-secondary" icon="fa-balance-scale" invisible="state in ('draft', 'done', 'cancel') or not raw_stone_input_qty"/>
+            </xpath>
+
+            <!-- Thêm Tab Điều Hành Trạm Nghiền Mỏ vào Notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Điều Hành Trạm Nghiền Mỏ" name="quarry_mrp_info">
+                    <group>
+                        <group string="Thông Tin Trạm Nghiền &amp; Ca Kíp">
+                            <field name="crushing_plant"/>
+                            <field name="production_shift"/>
+                            <field name="operator_name"/>
+                            <field name="safety_checked" widget="boolean_toggle"/>
+                            <field name="safety_inspector"/>
+                        </group>
+                        <group string="Cấp Liệu Đá Nguyên Khai (Luồng 4B)">
+                            <field name="quarry_pit_location"/>
+                            <field name="vehicle_trips_count"/>
+                            <field name="raw_stone_input_qty"/>
+                            <field name="quarry_stock_yard"/>
+                        </group>
+                    </group>
+                    <group string="Vận Hành &amp; Dừng Máy Trạm Nghiền (BR-04 Downtime)">
+                        <group>
+                            <field name="operating_hours"/>
+                            <field name="downtime_minutes"/>
+                            <field name="downtime_cause"/>
+                        </group>
+                        <group>
+                            <field name="downtime_explanation" placeholder="Bắt buộc giải trình kỹ thuật nếu dừng máy >= 10 phút (BR-04)..." invisible="not downtime_minutes"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Kế thừa Tree/List View của Lệnh Sản Xuất để hiển thị nhanh Trạm, Ca và Cấp liệu -->
+    <record id="mrp_production_tree_view_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">mrp.production.tree.view.inherit.hoangphuc</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_qty']" position="after">
+                <field name="crushing_plant" optional="show"/>
+                <field name="production_shift" optional="show"/>
+                <field name="raw_stone_input_qty" optional="show" sum="Tổng Đá Thô (Tấn)"/>
+                <field name="vehicle_trips_count" optional="show" sum="Tổng Chuyến"/>
+                <field name="downtime_minutes" optional="show" sum="Tổng Phút Dừng"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

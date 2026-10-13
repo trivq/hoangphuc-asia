@@ -42,8 +42,10 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 │                              # -> Hợp đồng đá, dự án công trình, kiểm soát hạn mức nợ & ký quỹ thời gian thực
 ├── hoangphuc_purchase/       # Kế thừa Purchases (purchase.order)
 │                              # -> Gắn xe máy (BR-10), quy tắc 3 báo giá (BR-02), duyệt <=20M và >20M (BR-03), nghiệm thu hiện trường (BR-05)
-└── hoangphuc_maintenance/    # Kế thừa Maintenance (maintenance.equipment, maintenance.request, hoangphuc.fuel.log)
-                               # -> Định mức dầu L/h, dừng máy >=10 phút (BR-04), nghiệm thu 3 bên (BR-07), đối soát dầu cảnh báo >10% (BR-08)
+├── hoangphuc_maintenance/    # Kế thừa Maintenance (maintenance.equipment, maintenance.request, hoangphuc.fuel.log)
+│                              # -> Định mức dầu L/h, dừng máy >=10 phút (BR-04), nghiệm thu 3 bên (BR-07), đối soát dầu cảnh báo >10% (BR-08)
+└── hoangphuc_mrp/            # Kế thừa Manufacturing (mrp.production, mrp.bom)
+                               # -> Trạm nghiền sàng 1/2, ca sản xuất, an toàn đầu ca (BR-02), cấp liệu đá thô (Luồng 4B), dừng máy downtime (BR-04)
 ```
 
 ---
@@ -58,7 +60,8 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
 | **Sóng 1** | **4. Quản lý kho vật liệu nổ (VLNCN)** | **Inventory** (`stock.lot`, `stock.warehouse`) | • Khai báo hạn mức lưu trữ tối đa (kg thuốc nổ, kíp nổ) trên Kho mỏ.<br>• Quản lý Lô VLNCN: Ngày sản xuất, Hạn sử dụng, Nhà máy sản xuất (GAET, MICCO), Số giấy phép.<br>• Phiếu xuất kho VLNCN gắn Mã hộ chiếu nổ mìn và Chỉ huy nổ mìn chịu trách nhiệm. |
 | **Sóng 2** | **5. Bán hàng & Thu hồi Công nợ** | **Sales** (`sale.order`, `res.partner`) | • Khai báo Hợp đồng đá mỏ: Gắn tên Dự án/Công trình (Cao tốc, Cầu đường), Quy cách tính giá (Tấn hoặc $m^3$).<br>• Hồ sơ Khách hàng (`res.partner`): Phân loại Trả trước (Ký quỹ tiền cọc) vs Công nợ có hạn mức.<br>• Cảnh báo thời gian thực: Tự động cảnh báo đỏ/vàng trên Đơn hàng nếu khách chưa nộp tiền cọc hoặc vượt hạn mức nợ. |
 | **Sóng 2** | **6. Mua hàng & Phê duyệt vật tư** | **Purchases** (`purchase.order`) | • **BR-10**: Bắt buộc gắn đích danh xe/máy xúc/trạm nghiền chịu chi phí.<br>• **BR-02, BR-04**: Bắt buộc nhập thông tin so sánh 3 báo giá cạnh tranh; giải trình văn bản nếu mua 1 nguồn duy nhất.<br>• **BR-03**: Phân cấp phê duyệt thẩm quyền tài chính:<br>  * Đơn hàng <= 20.000.000 VNĐ: TGĐ phê duyệt.<br>  * Đơn hàng > 20.000.000 VNĐ: TGĐ kiểm tra -> Chủ tịch HĐQT phê duyệt cuối cùng.<br>• **BR-05**: Nghiệm thu thực tế và đính kèm ảnh hiện trường tại moong mỏ hoặc xưởng.<br>• **BR-08**: Quản lý chính sách công nợ NCC đặc thù (Túy Hoài, Đức Soạn, Tiến Lốp nợ 1 tháng). |
-| **Sóng 2** | **7. Quản lý Máy móc, Thiết bị & Bảo trì** | **Maintenance** (`maintenance.equipment`, `maintenance.request`) | • Hồ sơ Thiết bị: Biển số/số hiệu máy, định mức nhiên liệu chuẩn (L/h).<br>• **BR-02**: Trạng thái an toàn đầu ca; nút **Khóa máy khẩn cấp** nếu phát hiện lỗi nguy hiểm.<br>• **BR-10**: Phân loại rạch ròi: "Bảo dưỡng định kỳ" vs "Sửa chữa đột xuất".<br>• **BR-04**: Theo dõi Downtime: Nếu thời gian dừng máy >= 10 phút, bắt buộc có giải trình kỹ thuật.<br>• **BR-07**: Biên bản nghiệm thu chạy thử 3 bên (Lái xe, Thợ sửa chữa, Quản đốc mỏ) trước khi mở khóa máy.<br>• **BR-08**: Nhật ký cấp dầu & đối soát tiêu hao: Tự động tính L/h và **bật cảnh báo đỏ nếu chênh lệch > 10%**. |
+| **Sóng 2** | **7. Quản lý Máy móc, Thiết bị & Bảo trì** | **Maintenance** (`maintenance.equipment`, `maintenance.request`) | • Hồ sơ Thiết bị: Biển số/số hiệu máy, định mức nhiên liệu chuẩn (L/h).<br>• **BR-02**: Trạng thái an toàn đầu ca; nút **Khóa máy khẩn cấp** nếu phát hiện lỗi nguy hiểm.<br>• **BR-10**: Phân loại rạch ròi: "Bảo dưỡng định kỳ" vs "Sửa chữa đột xuất".<br>• **BR-04**: Theo dõi Downtime: Nếu thời gian dừng máy >= 10 phút, bắt buộc có giải trình kỹ thuật.<br>• **BR-07**: Biên bản nghiệm thu chạy thử 3 bên (Lái xe, Thợ sửa chữa, Quản đốc mỏ) trước khi mở khóa máy.<br>• **BR-08**: Nhật ký cấp dầu & đối soát tiêu hao: Tự động tính L/h và **bật cảnh báo đỏ nếu chênh lệch > 10%**.<br>• **BR-09**: Chặn sửa đè nhật trình cấp dầu. |
+| **Sóng 1 & 2** | **8. Sản xuất Trực tiếp & Trạm Nghiền Sàng (SXTT)** | **Manufacturing** (`mrp.production`, `mrp.bom`) | • Gắn Trạm nghiền (Trạm 1 - 250T/h, Trạm 2 - 150T/h), ca kíp và người vận hành.<br>• **BR-02**: Bắt buộc xác nhận an toàn đầu ca mới cho phát lệnh chạy trạm nghiền.<br>• **Luồng 4B**: Theo dõi khối lượng đá thô moong mỏ cấp vào phễu nghiền và số chuyến xe ben Howo.<br>• Nút **"Áp Đá Thô Cấp Liệu"**: Tự động đưa khối lượng đá thô thực tế vào tiêu hao nguyên liệu.<br>• **BR-04 (Downtime)**: Bắt buộc chọn nguyên nhân dừng máy và giải trình nếu dừng $\ge 10$ phút.<br>• **Luồng 4.5**: Chỉ định bãi tập kết đá thành phẩm (Đá 1x2, Đá 4x6, Đá Base). |
 
 ---
 
@@ -176,6 +179,33 @@ Hệ thống không tạo các bảng hay menu độc lập dư thừa mà **m�
    - Lượng dầu cấp: 245 lít → Tiêu hao thực tế: `24.5 L/h` (Định mức chuẩn: 21.0 L/h → **Vượt quá +16.7%**!).
    - **Hệ thống lập tức kích hoạt Cảnh báo đỏ**: *"CẢNH BÁO BR-08: Lượng dầu tiêu hao thực tế vượt quá định mức chuẩn trên 10%! Bắt buộc phải có giải trình kỹ thuật trước khi lưu."*
    - Ghi nhận giải trình kỹ thuật: *"Đường vận chuyển từ moong sâu lên bãi sàng bị sình lầy do mưa đêm, xe phải gài 2 cầu chạy số 1 liên tục..."*
+
+---
+
+### Kịch bản 6: Điều Hành Sản Xuất Trạm Nghiền & Kiểm Soát Dừng Máy (SXTT)
+> 📋 **Căn cứ tài liệu quy trình**: [6-Bieu_mau_quy_trinh_SXTT_TONG_THE_HOAN_CHINH_V2_1.md](file:///home/ubuntu/source/HoangPhuc/6-Bieu_mau_quy_trinh_SXTT_TONG_THE_HOAN_CHINH_V2_1.md)
+> - **Nghiệp vụ mỏ thực tế**: Điều hành trạm nghiền sàng (Trạm 1 công suất 250T/h, Trạm 2 công suất 150T/h), tiếp nhận đá thô moong mỏ xúc cấp phễu, kiểm tra an toàn đầu ca, theo dõi thời gian dừng máy và bàn giao thành phẩm nhập bãi.
+> - **Quy tắc & Tiêu chuẩn số hóa**:
+>   - **BR-02**: Bắt buộc xác nhận an toàn đầu ca trước khi phát lệnh chạy trạm nghiền (chặn vận hành nếu điều kiện an toàn không đạt).
+>   - **Luồng 4B (Cấp liệu)**: Ghi nhận số chuyến xe ben Howo và khối lượng đá thô (Tấn) cấp vào phễu; nút "Áp Đá Thô Cấp Liệu" tự động cập nhật chi tiết tiêu hao.
+>   - **BR-04 (Downtime)**: Theo dõi giờ chạy và thời gian dừng máy. Dừng $\ge 10$ phút bắt buộc chọn danh mục nguyên nhân chuẩn và nhập giải trình kỹ thuật.
+>   - **Luồng 4.5**: Bàn giao thành phẩm vào đúng bãi tập kết quy định.
+1. **Truy cập**: Vào ứng dụng **Sản xuất (Manufacturing)** → **Lệnh Sản Xuất (Manufacturing Orders)**.
+2. **Trường hợp 1: Xem Lệnh sản xuất Ca sáng đã hoàn thành (`WH/MO/00001`)**:
+   - Trạm nghiền: `Trạm Nghiền Sàng 1 (Công suất 250 Tấn/h)`.
+   - Ca sản xuất: `Ca 1 (06:00 - 14:00)`. Trạm trưởng: `Lê Hoàng Long`.
+   - Tab **"Điều Hành Trạm Nghiền Mỏ"**:
+     * Cấp liệu: `16 Chuyến xe ben Howo` chở `330.0 Tấn` đá hộc từ moong +45m.
+     * Thành phẩm đầu ra: `300.0 Tấn` Đá 1x2 (Đá Bê Tông) bàn giao vào Bãi thành phẩm đá 1x2 moong chính.
+     * Vận hành: Chạy máy 7.5 giờ; Dừng máy `25 phút` (>= 10 phút).
+     * Nguyên nhân dừng (BR-04): `Tắc Phễu / Kẹt Đá Quá Cỡ`.
+     * Giải trình kỹ thuật: *"Đá tảng quá cỡ >800mm từ xe Howo đổ vào làm kẹt miệng hàm nghiền sơ cấp C106. Kíp vận hành đã ngắt điện an toàn, dùng búa đập vỡ đá tảng và thông phễu cấp liệu mất 25 phút (BR-04)."*
+3. **Trường hợp 2: Trình diễn thao tác Lệnh sản xuất Ca chiều (`WH/MO/00002`)**:
+   - Mở lệnh sản xuất `WH/MO/00002` (Đang ở trạng thái Xác nhận / Sẵn sàng).
+   - Trạm trưởng nhập thực tế: `11 chuyến xe`, đá thô cấp liệu `220 Tấn`.
+   - Nhấn nút **"Áp Đá Thô Cấp Liệu"** trên Header → Hệ thống tự động cập nhật `220 Tấn` vào dòng nguyên liệu tiêu hao đá hộc.
+   - Thử nghiệm quy tắc BR-02: Nếu tắt nút tick *"Đã Kiểm Tra An Toàn Đầu Ca"* → Hệ thống lập tức chặn phát lệnh và cảnh báo đỏ vi phạm BR-02!
+   - Thử nghiệm quy tắc BR-04: Nếu nhập dừng máy `15 phút` mà bỏ trống giải trình → Hệ thống chặn nút Hoàn tất sản xuất, yêu cầu nhập giải trình sự cố.
 
 ---
 

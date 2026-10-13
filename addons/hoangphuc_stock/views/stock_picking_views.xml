@@ -12,6 +12,16 @@
                 <button name="action_apply_scale_to_moves" string="Áp Khối Lượng Cân" type="object" class="btn-primary" icon="fa-balance-scale" invisible="not net_weight"/>
             </xpath>
 
+            <!-- Hiển thị Trạng Thái của từng dòng Stock Move để người dùng theo dõi rõ ràng (Draft / Waiting / Ready / Done) -->
+            <xpath expr="//field[@name='move_ids']/list/field[@name='state']" position="attributes">
+                <attribute name="column_invisible">False</attribute>
+                <attribute name="widget">badge</attribute>
+                <attribute name="decoration-success">state == 'done'</attribute>
+                <attribute name="decoration-info">state == 'assigned'</attribute>
+                <attribute name="decoration-warning">state in ('confirmed', 'waiting')</attribute>
+                <attribute name="decoration-muted">state in ('draft', 'cancel')</attribute>
+            </xpath>
+
             <!-- Thêm Tab Trạm Cân Mỏ Đá vào Notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Trạm Cân Mỏ Đá" name="scale_info">

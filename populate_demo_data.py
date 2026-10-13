@@ -1110,7 +1110,95 @@ def populate_demo_data(cr):
             'current_meter': 2110.0,
             'fuel_liters': 245.0,
             'fuel_station': 'Xe Bồn Cấp Dầu Lưu Động Bãi Moong',
-            'technical_explanation': 'Đường vận chuyển từ moong sâu lên bãi sàng bị sình lầy do mưa đêm, xe phải gài 2 cầu chạy số 1 liên tục làm tăng tiêu hao nhiên liệu (BR-08).',
+    # -------------------------------------------------------------
+    # 13. SẢN XUẤT TRỰC TIẾP MỎ ĐÁ & TRẠM NGHIỀN SÀNG (MRP / SXTT)
+    # -------------------------------------------------------------
+    bom_obj = env['mrp.bom']
+    prod_stone_1x2 = products['Đá 1x2 (Đá Bê Tông)']
+    prod_stone_raw = products['Đá Hộc Khai Thác Mỏ']
+    prod_stone_4x6 = products['Đá 4x6 (Đá Cấp Phối Móng)']
+
+    # 13.1 Định mức sản xuất (BOM) Đá 1x2 từ Đá Hộc moong mỏ
+    bom_1x2 = bom_obj.search([('product_tmpl_id', '=', prod_stone_1x2.product_tmpl_id.id)], limit=1)
+    if not bom_1x2:
+        bom_1x2 = bom_obj.create({
+            'product_tmpl_id': prod_stone_1x2.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'type': 'normal',
+            'bom_line_ids': [
+                (0, 0, {
+                    'product_id': prod_stone_raw.id,
+                    'product_qty': 1.10,  # 1.1 tấn đá hộc ra 1.0 tấn đá 1x2 (hao hụt 10% ra mạt đá)
+                })
+            ]
         })
 
-    print("SUCCESS: Hoang Phuc demo data (Warehouses, VLNCN Lots, Quants, Equipment Spare Parts) populated successfully!")
+    # 13.2 Định mức sản xuất (BOM) Đá 4x6 từ Đá Hộc moong mỏ
+    bom_4x6 = bom_obj.search([('product_tmpl_id', '=', prod_stone_4x6.product_tmpl_id.id)], limit=1)
+    if not bom_4x6:
+        bom_4x6 = bom_obj.create({
+            'product_tmpl_id': prod_stone_4x6.product_tmpl_id.id,
+            'product_qty': 1.0,
+            'type': 'normal',
+            'bom_line_ids': [
+                (0, 0, {
+                    'product_id': prod_stone_raw.id,
+                    'product_qty': 1.05,
+                })
+            ]
+        })
+
+    # 13.3 Lệnh sản xuất (MO)
+    mo_obj = env['mrp.production']
+    
+    # MO 1: Đã hoàn tất trong ca sáng (Ca 1: 06:00 - 14:00) - Có dừng máy 25 phút giải trình (BR-04)
+    existing_mo1 = mo_obj.search([('crushing_plant', '=', 'plant_1'), ('production_shift', '=', 'shift_1')], limit=1)
+    if not existing_mo1:
+        mo1 = mo_obj.create({
+            'product_id': prod_stone_1x2.id,
+            'product_qty': 300.0,
+            'bom_id': bom_1x2.id,
+            'crushing_plant': 'plant_1',
+            'production_shift': 'shift_1',
+            'operator_name': 'Lê Hoàng Long',
+            'safety_checked': True,
+            'safety_inspector': 'Nguyễn Văn An (Giám sát An toàn Mỏ)',
+            'quarry_pit_location': 'Moong Khai Thác Mỏ Núi Dài - Tầng Mức +45m',
+            'vehicle_trips_count': 16,
+            'raw_stone_input_qty': 330.0,
+            'quarry_stock_yard': 'Bãi Thành Phẩm Đá 1x2 - Moong Chính Cạnh Trạm Cân Số 1',
+            'operating_hours': 7.5,
+            'downtime_minutes': 25,
+            'downtime_cause': 'jam',
+            'downtime_explanation': 'Đá tảng quá cỡ >800mm từ xe Howo đổ vào làm kẹt miệng hàm nghiền sơ cấp C106. Kíp vận hành đã ngắt điện an toàn, dùng búa đập vỡ đá tảng và thông phễu cấp liệu mất 25 phút (BR-04).',
+        })
+        mo1.action_confirm()
+        mo1.qty_producing = 300.0
+        for move in mo1.move_raw_ids:
+            move.quantity = 330.0
+        mo1.button_mark_done()
+
+    # MO 2: Lệnh sản xuất đang chạy trong ca chiều (Ca 2: 14:00 - 22:00) - Sẵn sàng cho demo
+    existing_mo2 = mo_obj.search([('crushing_plant', '=', 'plant_1'), ('production_shift', '=', 'shift_2')], limit=1)
+    if not existing_mo2:
+        mo2 = mo_obj.create({
+            'product_id': prod_stone_1x2.id,
+            'product_qty': 200.0,
+            'bom_id': bom_1x2.id,
+            'crushing_plant': 'plant_1',
+            'production_shift': 'shift_2',
+            'operator_name': 'Trần Văn Cường',
+            'safety_checked': True,
+            'safety_inspector': 'Nguyễn Văn An (Giám sát An toàn Mỏ)',
+            'quarry_pit_location': 'Moong Khai Thác Mỏ Núi Dài - Tầng Mức +45m',
+            'vehicle_trips_count': 11,
+            'raw_stone_input_qty': 220.0,
+            'quarry_stock_yard': 'Bãi Thành Phẩm Đá 1x2 - Moong Chính Cạnh Trạm Cân Số 1',
+            'operating_hours': 4.0,
+            'downtime_minutes': 0,
+            'downtime_cause': 'none',
+        })
+        mo2.action_confirm()
+
+    print("SUCCESS: Hoang Phuc demo data (Warehouses, VLNCN Lots, Quants, Equipment Spare Parts, MRP Crushing) populated successfully!")
+

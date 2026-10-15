@@ -22,7 +22,9 @@ Mở rộng Ứng dụng Mua Hàng (Purchase) cho Mỏ đá Hoàng Phúc:
     'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'purchase', 'maintenance'],
     'data': [
+        'data/ir_config_parameter_data.xml',
         'views/purchase_order_views.xml',
+        'views/res_config_settings_views.xml',
     ],
     'installable': True,
     'application': False,

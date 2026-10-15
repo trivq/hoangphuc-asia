@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_purchase_hoangphuc" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.hoangphuc.purchase</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='purchase_setting_container']" position="inside">
+                <setting id="hoangphuc_po_tier_approval_limit"
+                         string="Phân Cấp Phê Duyệt Mua Sắm (BR-03)"
+                         help="Hạn mức thẩm quyền tối đa của Tổng Giám Đốc (&lt;=). Đơn hàng vượt hạn mức này sẽ chuyển tiếp lên Chủ Tịch HĐQT phê duyệt.">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <label for="po_tier_approval_limit" class="col-lg-4 o_light_label" string="Hạn Mức Duyệt TGĐ"/>
+                            <field name="po_tier_approval_limit" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                        </div>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

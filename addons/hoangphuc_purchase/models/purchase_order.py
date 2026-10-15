@@ -29,8 +29,8 @@ class PurchaseOrder(models.Model):
     quote_price_3 = fields.Monetary(string='Giá Báo 3', currency_field='currency_id')
 
     approval_tier = fields.Selection([
-        ('tier_1', 'Cấp 1: <= 20 Triệu (TGĐ Phê Duyệt)'),
-        ('tier_2', 'Cấp 2: > 20 Triệu (Chủ Tịch HĐQT Phê Duyệt)')
+        ('tier_1', 'Cấp 1: TGĐ Phê Duyệt'),
+        ('tier_2', 'Cấp 2: Chủ Tịch HĐQT Phê Duyệt')
     ], string='Phân Cấp Thẩm Quyền Tài Chính', compute='_compute_approval_tier', store=True)
 
     approval_state = fields.Selection([
@@ -62,10 +62,23 @@ class PurchaseOrder(models.Model):
         ('special_1m', 'Nợ Gối Đầu 1 Tháng (Túy Hoài, Đức Soạn, Tiến Lốp)')
     ], string='Chính Sách Công Nợ NCC', default='standard', tracking=True)
 
+    @api.model
+    def _get_purchase_approval_limit(self):
+        """Lấy hạn mức thẩm quyền phê duyệt TGĐ từ cấu hình hệ thống (mặc định 20.000.000 VNĐ)."""
+        try:
+            limit = self.env['ir.config_parameter'].sudo().get_float(
+                'hoangphuc_purchase.purchase_approval_limit', 20_000_000.0
+            )
+        except Exception:
+            val = self.env['ir.config_parameter'].sudo().get_param('hoangphuc_purchase.purchase_approval_limit', 20_000_000.0)
+            limit = float(val or 20_000_000.0)
+        return limit if limit > 0 else 20_000_000.0
+
     @api.depends('amount_total')
     def _compute_approval_tier(self):
+        approval_limit = self._get_purchase_approval_limit()
         for order in self:
-            if order.amount_total > 20_000_000:
+            if order.amount_total > approval_limit:
                 order.approval_tier = 'tier_2'
             else:
                 order.approval_tier = 'tier_1'
@@ -78,17 +91,19 @@ class PurchaseOrder(models.Model):
         self.approval_state = 'waiting_gm'
 
     def action_gm_approve(self):
-        """TGĐ Phê duyệt: nếu <=20M xong luôn, nếu >20M đẩy lên CT HĐQT."""
+        """TGĐ Phê duyệt: nếu <= hạn mức xong luôn, nếu > hạn mức đẩy lên CT HĐQT."""
         self.ensure_one()
+        approval_limit = self._get_purchase_approval_limit()
+        formatted_limit = f'{approval_limit:,.0f}'
         if self.approval_tier == 'tier_1':
             self.approval_state = 'approved'
-            self.message_post(body=_('Tổng Giám Đốc đã phê duyệt đơn hàng (Thẩm quyền <= 20 triệu VNĐ).'))
+            self.message_post(body=_('Tổng Giám Đốc đã phê duyệt đơn hàng (Thẩm quyền <= %s VNĐ).') % formatted_limit)
         else:
             self.approval_state = 'waiting_chairman'
-            self.message_post(body=_('Tổng Giám Đốc đã xem xét và chuyển Chủ Tịch HĐQT phê duyệt (Đơn hàng > 20 triệu VNĐ).'))
+            self.message_post(body=_('Tổng Giám Đốc đã xem xét và chuyển Chủ Tịch HĐQT phê duyệt (Đơn hàng > %s VNĐ).') % formatted_limit)
 
     def action_chairman_approve(self):
-        """Chủ tịch HĐQT phê duyệt đơn hàng > 20M."""
+        """Chủ tịch HĐQT phê duyệt đơn hàng vượt hạn mức TGĐ."""
         self.ensure_one()
         self.approval_state = 'approved'
         self.message_post(body=_('Chủ Tịch HĐQT đã phê duyệt tối cao cho đơn hàng.'))

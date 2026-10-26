@@ -22,6 +22,7 @@ Mở rộng Ứng dụng Bán Hàng (Sale) cho Mỏ đá Hoàng Phúc:
     'data': [
         'views/partner_views.xml',
         'views/sale_order_views.xml',
+        'views/stock_picking_views.xml',
     ],
     'installable': True,
     'application': False,

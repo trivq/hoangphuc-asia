@@ -11,6 +11,14 @@
                 <button name="action_quick_fill_scale_input" string="Áp Đá Thô Cấp Liệu" type="object" class="btn-secondary" icon="fa-balance-scale" invisible="state in ('draft', 'done', 'cancel') or not raw_stone_input_qty"/>
             </xpath>
 
+            <!-- Tùy biến nút Transfers thành Phiếu Nhập Kho hiển thị khi MO đã xác nhận -->
+            <xpath expr="//button[@name='action_view_mo_delivery']" position="attributes">
+                <attribute name="invisible">state in ('draft', 'cancel')</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_view_mo_delivery']/field[@name='delivery_count']" position="attributes">
+                <attribute name="string">Phiếu Nhập Kho</attribute>
+            </xpath>
+
             <!-- Thêm Tab Điều Hành Trạm Nghiền Mỏ vào Notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Điều Hành Trạm Nghiền Mỏ" name="quarry_mrp_info">

@@ -1205,5 +1205,10 @@ def populate_demo_data(cr):
         })
         mo2.action_confirm()
 
+    # Đồng bộ / cập nhật phiếu nhập kho bãi thành phẩm cho các lệnh sản xuất
+    for mo in (existing_mo1 or mo1) | (existing_mo2 or mo2):
+        if hasattr(mo, '_create_or_update_finished_picking'):
+            mo._create_or_update_finished_picking()
+
     print("SUCCESS: Hoang Phuc demo data (Warehouses, VLNCN Lots, Quants, Equipment Spare Parts, MRP Crushing) populated successfully!")
 

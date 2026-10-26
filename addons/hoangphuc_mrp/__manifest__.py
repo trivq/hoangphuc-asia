@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Quản Lý Sản Xuất & Trạm Nghiền Sàng',
-    'version': '1.0.2',
+    'version': '1.0.0',
     'category': 'Manufacturing/Quarry',
     'summary': 'Quản lý lệnh sản xuất mỏ đá, trạm nghiền, ca kíp, cấp liệu moong mỏ, kiểm tra an toàn đầu ca (BR-02) và dừng máy (BR-04)',
     'description': """
@@ -26,7 +26,6 @@ Căn cứ theo Biểu mẫu quy trình Sản xuất trực tiếp mỏ đá (SXT
     'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'mrp', 'hoangphuc_stock'],
     'data': [
-        'security/ir.access.csv',
         'views/mrp_production_views.xml',
     ],
     'installable': True,

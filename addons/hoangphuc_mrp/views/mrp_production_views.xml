@@ -11,14 +11,6 @@
                 <button name="action_quick_fill_scale_input" string="Áp Đá Thô Cấp Liệu" type="object" class="btn-secondary" icon="fa-balance-scale" invisible="state in ('draft', 'done', 'cancel') or not raw_stone_input_qty"/>
             </xpath>
 
-            <!-- Tùy biến nút Transfers thành Phiếu Nhập Kho hiển thị khi MO đã xác nhận -->
-            <xpath expr="//button[@name='action_view_mo_delivery']" position="attributes">
-                <attribute name="invisible">state in ('draft', 'cancel')</attribute>
-            </xpath>
-            <xpath expr="//button[@name='action_view_mo_delivery']/field[@name='delivery_count']" position="attributes">
-                <attribute name="string">Phiếu Nhập Kho</attribute>
-            </xpath>
-
             <!-- Thêm Tab Điều Hành Trạm Nghiền Mỏ vào Notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Điều Hành Trạm Nghiền Mỏ" name="quarry_mrp_info">
@@ -40,46 +32,15 @@
                     <group string="Vận Hành &amp; Dừng Máy Trạm Nghiền (BR-04 Downtime)">
                         <group>
                             <field name="operating_hours"/>
+                            <field name="downtime_minutes"/>
+                            <field name="downtime_cause"/>
                         </group>
                         <group>
-                            <field name="downtime_minutes" readonly="1"/>
+                            <field name="downtime_explanation" placeholder="Bắt buộc giải trình kỹ thuật nếu dừng máy >= 10 phút (BR-04)..." invisible="not downtime_minutes"/>
                         </group>
                     </group>
-                    <field name="downtime_ids">
-                        <list editable="bottom">
-                            <field name="date_start"/>
-                            <field name="date_end"/>
-                            <field name="duration_minutes" sum="Tổng Phút Dừng"/>
-                            <field name="cause"/>
-                            <field name="explanation" placeholder="Bắt buộc giải trình nếu dừng >= 10 phút..."/>
-                        </list>
-                    </field>
                 </page>
             </xpath>
-        </field>
-    </record>
-
-    <!-- Form View cho Nhật Ký Dừng Máy Trạm Nghiền -->
-    <record id="mrp_production_downtime_form_view" model="ir.ui.view">
-        <field name="name">mrp.production.downtime.form</field>
-        <field name="model">mrp.production.downtime</field>
-        <field name="arch" type="xml">
-            <form string="Nhật Ký Dừng Máy Trạm Nghiền">
-                <sheet>
-                    <group>
-                        <group string="Thời Gian Sự Cố">
-                            <field name="production_id" readonly="1"/>
-                            <field name="date_start"/>
-                            <field name="date_end"/>
-                            <field name="duration_minutes"/>
-                        </group>
-                        <group string="Nguyên Nhân &amp; Giải Trình (BR-04)">
-                            <field name="cause"/>
-                            <field name="explanation" placeholder="Bắt buộc giải trình nếu dừng >= 10 phút (BR-04)..."/>
-                        </group>
-                    </group>
-                </sheet>
-            </form>
         </field>
     </record>
 

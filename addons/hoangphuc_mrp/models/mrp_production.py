@@ -60,24 +60,26 @@ class MrpProduction(models.Model):
         help='Tổng số giờ chạy máy có tải trong ca.'
     )
 
-    downtime_ids = fields.One2many(
-        'mrp.production.downtime',
-        'production_id',
-        string='Nhật Ký Dừng Máy'
-    )
-
     downtime_minutes = fields.Integer(
-        string='Tổng Thời Gian Dừng Máy (Phút)',
-        compute='_compute_downtime_minutes',
-        store=True,
+        string='Thời Gian Dừng Máy (Phút)',
+        default=0,
         tracking=True,
-        help='Tổng thời gian dừng máy phát sinh trong ca từ các lượt dừng máy.'
+        help='Tổng thời gian dừng máy phát sinh trong ca.'
     )
 
-    @api.depends('downtime_ids.duration_minutes')
-    def _compute_downtime_minutes(self):
-        for mo in self:
-            mo.downtime_minutes = sum(mo.downtime_ids.mapped('duration_minutes'))
+    downtime_cause = fields.Selection([
+        ('none', 'Không Dừng Máy (Bình Thường)'),
+        ('jam', 'Tắc Phễu / Kẹt Đá Quá Cỡ'),
+        ('electrical', 'Sự Cố Điện / Mất Điện Lưới'),
+        ('mechanical', 'Sự Cố Cơ Khí / Rách Băng Tải / Kẹt Sàng'),
+        ('weather', 'Mưa Lớn / Thời Tiết Mất An Toàn'),
+        ('maintenance', 'Bảo Dưỡng Định Kỳ Đầu Ca'),
+    ], string='Nguyên Nhân Dừng Máy (BR-04)', default='none', tracking=True)
+
+    downtime_explanation = fields.Text(
+        string='Giải Trình Sự Cố Dừng Máy',
+        help='Bắt buộc nhập giải trình kỹ thuật nếu thời gian dừng máy >= 10 phút (BR-04).'
+    )
 
     quarry_stock_yard = fields.Char(
         string='Vị Trí Bãi Tập Kết Thành Phẩm',
@@ -85,107 +87,18 @@ class MrpProduction(models.Model):
         help='Bãi tập kết thành phẩm đá sau khi qua hệ thống băng tải sàng phân loại (Luồng 4.5).'
     )
 
-    @api.depends('state', 'move_finished_ids.picking_id')
-    def _compute_picking_ids(self):
-        super()._compute_picking_ids()
-        for order in self:
-            extra_pickings = self.env['stock.picking'].search([
-                ('origin', '=', order.name),
-                ('is_scale_picking', '=', True),
-            ])
-            if extra_pickings:
-                order.picking_ids = (order.picking_ids or self.env['stock.picking']) | extra_pickings
-                order.delivery_count = len(order.picking_ids)
-
-    def _create_or_update_finished_picking(self):
-        """Tự động tạo hoặc liên kết Phiếu Nhập Kho Bãi Thành Phẩm (Receipt) cho MO mỏ đá."""
-        Picking = self.env['stock.picking']
-        for mo in self:
-            if not mo.move_finished_ids:
-                continue
-            if not getattr(mo.product_id, 'is_quarry_stone', False):
-                continue
-            # Tìm phiếu kho thành phẩm đã liên kết
-            picking = mo.picking_ids.filtered(
-                lambda p: p.is_scale_picking and (p.location_dest_id == mo.location_dest_id or p.picking_type_id.code in ('incoming', 'internal'))
-            )
-            qty_val = mo.qty_producing or mo.product_qty or 0.0
-            net_kg = qty_val * 1000.0
-            density_val = mo.product_id.density if hasattr(mo.product_id, 'density') and mo.product_id.density else 1.6
-            vol = round((net_kg / 1000.0) / density_val, 2) if density_val > 0 else 0.0
-
-            if not picking:
-                warehouse = mo.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([('company_id', '=', mo.company_id.id)], limit=1)
-                picking_type = warehouse.in_type_id or mo.picking_type_id
-                vals = {
-                    'picking_type_id': picking_type.id,
-                    'origin': mo.name,
-                    'location_id': mo.production_location_id.id,
-                    'location_dest_id': mo.location_dest_id.id,
-                    'company_id': mo.company_id.id,
-                    'crushing_plant': mo.crushing_plant,
-                    'driver_name': mo.operator_name,
-                    'is_scale_picking': True,
-                    'net_weight': net_kg,
-                    'density': density_val,
-                    'volume_m3': vol,
-                }
-                picking = Picking.create(vals)
-            else:
-                picking.write({
-                    'net_weight': net_kg,
-                    'volume_m3': vol,
-                })
-
-            # Gắn các moves finished và move_lines vào picking
-            moves_to_link = mo.move_finished_ids.filtered(lambda m: not m.picking_id)
-            if moves_to_link:
-                moves_to_link.write({'picking_id': picking.id})
-                if moves_to_link.move_line_ids:
-                    moves_to_link.move_line_ids.filtered(lambda ml: not ml.picking_id).write({'picking_id': picking.id})
-
-    def action_view_mo_delivery(self):
-        """Mở danh sách phiếu nhập kho của MO, tự động khởi tạo nếu chưa có."""
-        self.ensure_one()
-        if not self.picking_ids and self.move_finished_ids and getattr(self.product_id, 'is_quarry_stone', False):
-            self._create_or_update_finished_picking()
-        return super().action_view_mo_delivery()
-
     def action_confirm(self):
         """Kiểm tra quy tắc an toàn BR-02 trước khi xác nhận phát lệnh sản xuất."""
         for mo in self:
             if not mo.safety_checked:
                 raise UserError(_('CẢNH BÁO BR-02: Điều kiện an toàn đầu ca chưa được xác nhận! Nghiêm cấm phát lệnh vận hành trạm nghiền.'))
-        res = super().action_confirm()
-        for mo in self:
-            if getattr(mo.product_id, 'is_quarry_stone', False):
-                mo._create_or_update_finished_picking()
-        return res
-
-    def copy_data(self, default=None):
-        vals_list = super().copy_data(default=default)
-        for vals in vals_list:
-            for field in ('move_finished_ids', 'move_raw_ids'):
-                if vals.get(field):
-                    for cmd in vals[field]:
-                        if isinstance(cmd, (list, tuple)) and len(cmd) == 3 and isinstance(cmd[2], dict):
-                            cmd[2].pop('picking_id', None)
-        return vals_list
+        return super().action_confirm()
 
     def button_mark_done(self):
         """Kiểm tra giải trình dừng máy BR-04 trước khi hoàn tất lệnh sản xuất."""
         for mo in self:
-            missing_explanation = mo.downtime_ids.filtered(
-                lambda d: d.duration_minutes >= 10 and not (d.explanation or '').strip()
-            )
-            if missing_explanation:
-                raise UserError(_(
-                    'CẢNH BÁO BR-04: Có %s lượt dừng máy từ 10 phút trở lên chưa có giải trình kỹ thuật! '
-                    'Bắt buộc nhập đầy đủ giải trình sự cố dừng máy trước khi chốt sản xuất!'
-                ) % len(missing_explanation))
-        for mo in self:
-            if getattr(mo.product_id, 'is_quarry_stone', False):
-                mo._create_or_update_finished_picking()
+            if mo.downtime_minutes >= 10 and not (mo.downtime_explanation or '').strip():
+                raise UserError(_('CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (%s phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!') % mo.downtime_minutes)
         return super().button_mark_done()
 
     def action_quick_fill_scale_input(self):

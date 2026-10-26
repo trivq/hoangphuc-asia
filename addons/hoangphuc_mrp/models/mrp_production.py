@@ -60,26 +60,24 @@ class MrpProduction(models.Model):
         help='Tổng số giờ chạy máy có tải trong ca.'
     )
 
+    downtime_ids = fields.One2many(
+        'mrp.production.downtime',
+        'production_id',
+        string='Nhật Ký Dừng Máy'
+    )
+
     downtime_minutes = fields.Integer(
-        string='Thời Gian Dừng Máy (Phút)',
-        default=0,
+        string='Tổng Thời Gian Dừng Máy (Phút)',
+        compute='_compute_downtime_minutes',
+        store=True,
         tracking=True,
-        help='Tổng thời gian dừng máy phát sinh trong ca.'
+        help='Tổng thời gian dừng máy phát sinh trong ca từ các lượt dừng máy.'
     )
 
-    downtime_cause = fields.Selection([
-        ('none', 'Không Dừng Máy (Bình Thường)'),
-        ('jam', 'Tắc Phễu / Kẹt Đá Quá Cỡ'),
-        ('electrical', 'Sự Cố Điện / Mất Điện Lưới'),
-        ('mechanical', 'Sự Cố Cơ Khí / Rách Băng Tải / Kẹt Sàng'),
-        ('weather', 'Mưa Lớn / Thời Tiết Mất An Toàn'),
-        ('maintenance', 'Bảo Dưỡng Định Kỳ Đầu Ca'),
-    ], string='Nguyên Nhân Dừng Máy (BR-04)', default='none', tracking=True)
-
-    downtime_explanation = fields.Text(
-        string='Giải Trình Sự Cố Dừng Máy',
-        help='Bắt buộc nhập giải trình kỹ thuật nếu thời gian dừng máy >= 10 phút (BR-04).'
-    )
+    @api.depends('downtime_ids.duration_minutes')
+    def _compute_downtime_minutes(self):
+        for mo in self:
+            mo.downtime_minutes = sum(mo.downtime_ids.mapped('duration_minutes'))
 
     quarry_stock_yard = fields.Char(
         string='Vị Trí Bãi Tập Kết Thành Phẩm',
@@ -97,8 +95,14 @@ class MrpProduction(models.Model):
     def button_mark_done(self):
         """Kiểm tra giải trình dừng máy BR-04 trước khi hoàn tất lệnh sản xuất."""
         for mo in self:
-            if mo.downtime_minutes >= 10 and not (mo.downtime_explanation or '').strip():
-                raise UserError(_('CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (%s phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!') % mo.downtime_minutes)
+            missing_explanation = mo.downtime_ids.filtered(
+                lambda d: d.duration_minutes >= 10 and not (d.explanation or '').strip()
+            )
+            if missing_explanation:
+                raise UserError(_(
+                    'CẢNH BÁO BR-04: Có %s lượt dừng máy từ 10 phút trở lên chưa có giải trình kỹ thuật! '
+                    'Bắt buộc nhập đầy đủ giải trình sự cố dừng máy trước khi chốt sản xuất!'
+                ) % len(missing_explanation))
         return super().button_mark_done()
 
     def action_quick_fill_scale_input(self):

@@ -90,23 +90,24 @@ class MrpProduction(models.Model):
         super()._compute_picking_ids()
         for order in self:
             extra_pickings = self.env['stock.picking'].search([
-                '|',
                 ('origin', '=', order.name),
-                ('id', 'in', (order.move_finished_ids.picking_id | order.move_raw_ids.picking_id).ids),
+                ('is_scale_picking', '=', True),
             ])
-            all_pickings = (order.picking_ids or self.env['stock.picking']) | extra_pickings
-            order.picking_ids = all_pickings
-            order.delivery_count = len(all_pickings)
+            if extra_pickings:
+                order.picking_ids = (order.picking_ids or self.env['stock.picking']) | extra_pickings
+                order.delivery_count = len(order.picking_ids)
 
     def _create_or_update_finished_picking(self):
-        """Tự động tạo hoặc liên kết Phiếu Nhập Kho Bãi Thành Phẩm (Receipt) cho MO."""
+        """Tự động tạo hoặc liên kết Phiếu Nhập Kho Bãi Thành Phẩm (Receipt) cho MO mỏ đá."""
         Picking = self.env['stock.picking']
         for mo in self:
             if not mo.move_finished_ids:
                 continue
+            if not getattr(mo.product_id, 'is_quarry_stone', False):
+                continue
             # Tìm phiếu kho thành phẩm đã liên kết
             picking = mo.picking_ids.filtered(
-                lambda p: p.location_dest_id == mo.location_dest_id or p.picking_type_id.code in ('incoming', 'internal')
+                lambda p: p.is_scale_picking and (p.location_dest_id == mo.location_dest_id or p.picking_type_id.code in ('incoming', 'internal'))
             )
             qty_val = mo.qty_producing or mo.product_qty or 0.0
             net_kg = qty_val * 1000.0
@@ -146,7 +147,7 @@ class MrpProduction(models.Model):
     def action_view_mo_delivery(self):
         """Mở danh sách phiếu nhập kho của MO, tự động khởi tạo nếu chưa có."""
         self.ensure_one()
-        if not self.picking_ids and self.move_finished_ids:
+        if not self.picking_ids and self.move_finished_ids and getattr(self.product_id, 'is_quarry_stone', False):
             self._create_or_update_finished_picking()
         return super().action_view_mo_delivery()
 
@@ -157,8 +158,19 @@ class MrpProduction(models.Model):
                 raise UserError(_('CẢNH BÁO BR-02: Điều kiện an toàn đầu ca chưa được xác nhận! Nghiêm cấm phát lệnh vận hành trạm nghiền.'))
         res = super().action_confirm()
         for mo in self:
-            mo._create_or_update_finished_picking()
+            if getattr(mo.product_id, 'is_quarry_stone', False):
+                mo._create_or_update_finished_picking()
         return res
+
+    def copy_data(self, default=None):
+        vals_list = super().copy_data(default=default)
+        for vals in vals_list:
+            for field in ('move_finished_ids', 'move_raw_ids'):
+                if vals.get(field):
+                    for cmd in vals[field]:
+                        if isinstance(cmd, (list, tuple)) and len(cmd) == 3 and isinstance(cmd[2], dict):
+                            cmd[2].pop('picking_id', None)
+        return vals_list
 
     def button_mark_done(self):
         """Kiểm tra giải trình dừng máy BR-04 trước khi hoàn tất lệnh sản xuất."""
@@ -171,10 +183,9 @@ class MrpProduction(models.Model):
                     'CẢNH BÁO BR-04: Có %s lượt dừng máy từ 10 phút trở lên chưa có giải trình kỹ thuật! '
                     'Bắt buộc nhập đầy đủ giải trình sự cố dừng máy trước khi chốt sản xuất!'
                 ) % len(missing_explanation))
-            if mo.downtime_minutes >= 10 and not (mo.downtime_explanation or '').strip():
-                raise UserError(_('CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (%s phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!') % mo.downtime_minutes)
         for mo in self:
-            mo._create_or_update_finished_picking()
+            if getattr(mo.product_id, 'is_quarry_stone', False):
+                mo._create_or_update_finished_picking()
         return super().button_mark_done()
 
     def action_quick_fill_scale_input(self):

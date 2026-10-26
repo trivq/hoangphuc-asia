@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Quản Lý Kho & Trạm Cân Mỏ Đá',
-    'version': '1.0.0',
+    'version': '1.0.1',
     'category': 'Inventory/Quarry',
     'summary': 'Tích hợp Trạm cân xe vào Stock Picking, quy đổi tỷ trọng Tấn/m3, quản lý kho VLNCN và cấp phát vật tư',
     'description': """
@@ -20,7 +20,7 @@ Mở rộng Ứng dụng Kho (Inventory / Stock) cho Mỏ đá Hoàng Phúc:
     """,
     'author': 'Tri Vo - Paracel',
     'website': 'https://hoangphucstone.vn',
-    'depends': ['base', 'stock', 'product'],
+    'depends': ['base', 'stock', 'product', 'maintenance'],
     'data': [
         'views/stock_picking_views.xml',
         'views/product_views.xml',

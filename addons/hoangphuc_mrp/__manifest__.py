@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Quản Lý Sản Xuất & Trạm Nghiền Sàng',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'Manufacturing/Quarry',
     'summary': 'Quản lý lệnh sản xuất mỏ đá, trạm nghiền, ca kíp, cấp liệu moong mỏ, kiểm tra an toàn đầu ca (BR-02) và dừng máy (BR-04)',
     'description': """

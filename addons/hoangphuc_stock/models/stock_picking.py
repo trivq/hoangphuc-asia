@@ -92,6 +92,55 @@ class StockPicking(models.Model):
         help='Người có chứng chỉ chỉ huy nổ mìn chịu trách nhiệm hiện trường.'
     )
 
+    # Phân loại nghiệp vụ và kiểm soát hiển thị các tab tương ứng với loại hoạt động
+    picking_category = fields.Selection(
+        related='picking_type_id.picking_category',
+        string='Phân Loại Nghiệp Vụ Kho',
+        readonly=True,
+        store=True,
+    )
+    show_scale_tab = fields.Boolean(
+        string='Hiển Thị Tab Trạm Cân',
+        compute='_compute_tab_visibility',
+        store=True,
+        readonly=False,
+        help='Cho phép hiển thị thông tin trạm cân mỏ đá.'
+    )
+    show_spare_parts_tab = fields.Boolean(
+        string='Hiển Thị Tab Phụ Tùng',
+        compute='_compute_tab_visibility',
+        store=True,
+        readonly=False,
+        help='Cho phép hiển thị thông tin cấp phát phụ tùng thiết bị cơ giới mỏ.'
+    )
+    show_explosive_tab = fields.Boolean(
+        string='Hiển Thị Tab Vật Liệu Nổ',
+        compute='_compute_tab_visibility',
+        store=True,
+        readonly=False,
+        help='Cho phép hiển thị thông tin hộ chiếu nổ mìn VLNCN.'
+    )
+
+    @api.depends('picking_type_id', 'picking_type_id.picking_category', 'is_scale_picking', 'equipment_id', 'blasting_passport_code')
+    def _compute_tab_visibility(self):
+        for picking in self:
+            category = picking.picking_type_id.picking_category or 'stone'
+            # Tab Trạm Cân: Hiển thị nếu là kho đá/thành phẩm HOẶC phiếu đã bật cờ cân xe
+            picking.show_scale_tab = (category == 'stone') or bool(picking.is_scale_picking)
+            # Tab Phụ Tùng: Hiển thị nếu loại hoạt động là phụ tùng/vật tư HOẶC phiếu đã chọn thiết bị nhận
+            picking.show_spare_parts_tab = (category == 'spare_parts') or bool(picking.equipment_id)
+            # Tab Vật Liệu Nổ: Hiển thị nếu loại hoạt động là VLNCN HOẶC phiếu đã có mã hộ chiếu nổ mìn
+            picking.show_explosive_tab = (category == 'explosives') or bool(picking.blasting_passport_code)
+
+    @api.onchange('picking_type_id')
+    def _onchange_picking_type_hoangphuc(self):
+        if self.picking_type_id:
+            category = self.picking_type_id.picking_category
+            if category == 'stone':
+                self.is_scale_picking = True
+            elif category in ('spare_parts', 'explosives'):
+                self.is_scale_picking = False
+
     @api.depends('gross_weight', 'tare_weight', 'density')
     def _compute_scale_weights(self):
         for picking in self:

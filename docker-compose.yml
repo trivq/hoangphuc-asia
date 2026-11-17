@@ -10,7 +10,7 @@ services:
       - odoo-web-data:/var/lib/odoo
       - ./config:/etc/odoo
       - ./addons:/mnt/extra-addons
-      - /home/ubuntu/source/DucVietFoods/enterprise-20.0:/mnt/enterprise-addons
+      # - /home/ubuntu/source/DucVietFoods/enterprise-20.0:/mnt/enterprise-addons
     environment:
       - HOST=db
       - USER=odoo

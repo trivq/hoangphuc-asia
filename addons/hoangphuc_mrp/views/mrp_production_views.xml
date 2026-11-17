@@ -11,6 +11,14 @@
                 <button name="action_quick_fill_scale_input" string="Áp Đá Thô Cấp Liệu" type="object" class="btn-secondary" icon="fa-balance-scale" invisible="state in ('draft', 'done', 'cancel') or not raw_stone_input_qty"/>
             </xpath>
 
+            <!-- Thêm Smart Button mở các phiếu chuyển hàng liên quan vào Button Box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" name="action_view_related_pickings" type="object" icon="fa-truck"
+                        invisible="quarry_picking_count == 0">
+                    <field name="quarry_picking_count" widget="statinfo" string="Phiếu Chuyển Kho"/>
+                </button>
+            </xpath>
+
             <!-- Thêm Tab Điều Hành Trạm Nghiền Mỏ vào Notebook -->
             <xpath expr="//notebook" position="inside">
                 <page string="Điều Hành Trạm Nghiền Mỏ" name="quarry_mrp_info">

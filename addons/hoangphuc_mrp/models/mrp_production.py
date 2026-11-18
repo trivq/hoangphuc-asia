@@ -116,18 +116,15 @@ class MrpProduction(models.Model):
 
     @api.depends(
         'finished_picking_ids', 'finished_picking_ids.state',
-        'finished_move_ids', 'finished_move_ids.state', 'finished_move_ids.quantity', 'finished_move_ids.product_uom_qty'
+        'finished_move_ids', 'finished_move_ids.state', 'finished_move_ids.quantity'
     )
     def _compute_finished_stats(self):
         for mo in self:
-            valid_pickings = mo.finished_picking_ids.filtered(lambda p: p.state != 'cancel')
-            mo.finished_trips_count = len(valid_pickings)
+            # Chỉ đếm và cộng dồn các chuyến xe và phiếu chuyển kho đã HOÀN TẤT nhập bãi (state == 'done')
+            done_pickings = mo.finished_picking_ids.filtered(lambda p: p.state == 'done')
+            mo.finished_trips_count = len(done_pickings)
             done_moves = mo.finished_move_ids.filtered(lambda m: m.state == 'done')
-            if done_moves:
-                mo.finished_stone_total_qty = sum(done_moves.mapped('quantity'))
-            else:
-                undone_moves = mo.finished_move_ids.filtered(lambda m: m.state != 'cancel')
-                mo.finished_stone_total_qty = sum(undone_moves.mapped('quantity') or undone_moves.mapped('product_uom_qty'))
+            mo.finished_stone_total_qty = sum(done_moves.mapped('quantity'))
 
     quarry_picking_count = fields.Integer(
         string='Số Phiếu Chuyển Kho',
@@ -302,9 +299,9 @@ class MrpProduction(models.Model):
             picking_type = self.picking_type_id
 
         # Xác định vị trí nguồn (Trạm nghiền / Sau sản xuất)
-        src_loc = picking_type.default_location_src_id or (wh.sam_loc_id if wh else False) or self.location_dest_id
-        # Xác định vị trí đích (Bãi thành phẩm đá)
-        dest_loc = picking_type.default_location_dest_id or (wh.lot_stock_id if wh else False) or self.location_dest_id
+        src_loc = picking_type.default_location_src_id or (wh.sam_loc_id if wh else False) or self.location_src_id
+        # Xác định vị trí đích: Luôn ưu tiên vị trí thành phẩm được cấu hình trên Lệnh sản xuất (self.location_dest_id)
+        dest_loc = self.location_dest_id or picking_type.default_location_dest_id or (wh.lot_stock_id if wh else False)
 
         # Mặc định sản phẩm thành phẩm từ MO
         prod = self.product_id

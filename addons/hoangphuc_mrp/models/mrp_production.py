@@ -87,6 +87,48 @@ class MrpProduction(models.Model):
         help='Bãi tập kết thành phẩm đá sau khi qua hệ thống băng tải sàng phân loại (Luồng 4.5).'
     )
 
+    # Quản lý các chuyến xe cân và lệnh chuyển kho nhập bãi thành phẩm trong ca
+    finished_picking_ids = fields.One2many(
+        'stock.picking',
+        'mrp_production_id',
+        string='Phiếu Cân Thành Phẩm',
+        help='Danh sách các phiếu cân xe và lệnh chuyển kho nhập bãi thành phẩm trong ca.'
+    )
+    finished_move_ids = fields.One2many(
+        'stock.move',
+        'quarry_production_id',
+        string='Dịch Chuyển Thành Phẩm Nhập Bãi',
+        help='Chi tiết các dòng dịch chuyển đá thành phẩm theo từng chuyến xe cân.'
+    )
+    finished_trips_count = fields.Integer(
+        string='Số Chuyến Xe Thành Phẩm',
+        compute='_compute_finished_stats',
+        store=True,
+        help='Tổng số chuyến xe ben chở đá thành phẩm ra bãi tập kết trong ca.'
+    )
+    finished_stone_total_qty = fields.Float(
+        string='Tổng Thành Phẩm Đã Nhập Bãi (Tấn)',
+        digits=(12, 2),
+        compute='_compute_finished_stats',
+        store=True,
+        help='Tổng khối lượng đá thành phẩm thực tế đã cân và nhập bãi.'
+    )
+
+    @api.depends(
+        'finished_picking_ids', 'finished_picking_ids.state',
+        'finished_move_ids', 'finished_move_ids.state', 'finished_move_ids.quantity', 'finished_move_ids.product_uom_qty'
+    )
+    def _compute_finished_stats(self):
+        for mo in self:
+            valid_pickings = mo.finished_picking_ids.filtered(lambda p: p.state != 'cancel')
+            mo.finished_trips_count = len(valid_pickings)
+            done_moves = mo.finished_move_ids.filtered(lambda m: m.state == 'done')
+            if done_moves:
+                mo.finished_stone_total_qty = sum(done_moves.mapped('quantity'))
+            else:
+                undone_moves = mo.finished_move_ids.filtered(lambda m: m.state != 'cancel')
+                mo.finished_stone_total_qty = sum(undone_moves.mapped('quantity') or undone_moves.mapped('product_uom_qty'))
+
     quarry_picking_count = fields.Integer(
         string='Số Phiếu Chuyển Kho',
         compute='_compute_quarry_picking_count',
@@ -98,7 +140,7 @@ class MrpProduction(models.Model):
             mo.quarry_picking_count = len(mo._get_related_component_pickings())
 
     def _get_quarry_raw_stone_move(self):
-        """Xác định chính xác dòng nguyên liệu đá thô trong tab Thành phần (move_raw_ids)."""
+        """Xác định chính xác dòng nguyên liệu đá thô trong tab Nguyên Liệu (move_raw_ids)."""
         self.ensure_one()
         if not self.move_raw_ids:
             return self.env['stock.move']
@@ -227,6 +269,81 @@ class MrpProduction(models.Model):
         action['context'] = {'default_origin': self.name}
         return action
 
+    def action_view_finished_pickings(self):
+        """Mở danh sách các phiếu cân thành phẩm của MO này."""
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        action['name'] = _('Phiếu Cân Thành Phẩm: %s') % self.name
+        action['domain'] = [('id', 'in', self.finished_picking_ids.ids)]
+        action['context'] = {
+            'default_mrp_production_id': self.id,
+            'default_origin': self.name,
+        }
+        return action
+
+    def action_create_finished_picking(self):
+        """Tạo phiếu nhập kho thành phẩm mới cho chuyến xe ben hiện tại:
+        - Tự động điền loại thành phẩm trong MO.
+        - Gắn vị trí nguồn sau sản xuất của trạm nghiền đến bãi tập kết đá.
+        - Khởi tạo thông tin trạm cân để người quản lý/nhân viên trạm cân chỉ cần nhập BKS và cân xe.
+        """
+        self.ensure_one()
+        wh = self.picking_type_id.warehouse_id
+        # Ưu tiên lấy SAM type (Store After Manufacturing)
+        picking_type = wh.sam_type_id if wh and wh.sam_type_id else False
+        if not picking_type:
+            # Fallback lấy picking type nhập kho / điều chuyển nội bộ của kho thành phẩm đá
+            picking_type = self.env['stock.picking.type'].search([
+                ('warehouse_id', '=', wh.id if wh else False),
+                ('code', 'in', ('internal', 'incoming')),
+                ('picking_category', '=', 'stone'),
+            ], limit=1)
+        if not picking_type:
+            picking_type = self.picking_type_id
+
+        # Xác định vị trí nguồn (Trạm nghiền / Sau sản xuất)
+        src_loc = picking_type.default_location_src_id or (wh.sam_loc_id if wh else False) or self.location_dest_id
+        # Xác định vị trí đích (Bãi thành phẩm đá)
+        dest_loc = picking_type.default_location_dest_id or (wh.lot_stock_id if wh else False) or self.location_dest_id
+
+        # Mặc định sản phẩm thành phẩm từ MO
+        prod = self.product_id
+
+        move_vals = [{
+            'description_picking': _('Nhập bãi %s từ Lệnh %s') % (prod.display_name, self.name),
+            'product_id': prod.id,
+            'product_uom_qty': 0.0,
+            'quantity': 0.0,
+            'uom_id': prod.uom_id.id,
+            'location_id': src_loc.id,
+            'location_dest_id': dest_loc.id,
+            'origin': self.name,
+            'production_group_id': self.production_group_id.id if self.production_group_id else False,
+        }]
+
+        picking_vals = {
+            'picking_type_id': picking_type.id,
+            'location_id': src_loc.id,
+            'location_dest_id': dest_loc.id,
+            'origin': _('%s: Chuyến Thành Phẩm') % self.name,
+            'mrp_production_id': self.id,
+            'weigh_time': fields.Datetime.now(),
+            'crushing_plant': self.crushing_plant,
+            'density': getattr(prod, 'density', 1.6) or 1.6,
+            'move_ids': [(0, 0, mv) for mv in move_vals],
+        }
+
+        new_picking = self.env['stock.picking'].create(picking_vals)
+
+        return {
+            'name': _('Phiếu Cân Nhập Bãi Thành Phẩm Đá'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'res_id': new_picking.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def action_confirm(self):
         """Kiểm tra quy tắc an toàn BR-02 trước khi xác nhận phát lệnh sản xuất."""
         for mo in self:
@@ -235,11 +352,29 @@ class MrpProduction(models.Model):
         return super().action_confirm()
 
     def button_mark_done(self):
-        """Kiểm tra giải trình dừng máy BR-04 trước khi hoàn tất lệnh sản xuất."""
+        """Kiểm tra giải trình dừng máy BR-04 và đồng bộ sản lượng từ các chuyến xe thành phẩm."""
         for mo in self:
             if mo.downtime_minutes >= 10 and not (mo.downtime_explanation or '').strip():
                 raise UserError(_('CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (%s phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!') % mo.downtime_minutes)
-        return super().button_mark_done()
+
+            # Đồng bộ sản lượng hoàn thành trên MO theo tổng các phiếu cân thực tế nếu chưa chốt
+            if mo.finished_stone_total_qty > 0 and mo.qty_producing == 0:
+                mo.qty_producing = mo.finished_stone_total_qty
+
+        res = super().button_mark_done()
+
+        # Dọn dẹp/hủy phiếu SAM tự động gộp nếu toàn bộ hàng đã được nhập theo từng chuyến xe lẻ
+        for mo in self:
+            if mo.finished_picking_ids:
+                auto_sam_pickings = mo.picking_ids.filtered(
+                    lambda p: p.picking_type_id == mo.picking_type_id.warehouse_id.sam_type_id
+                    and p.id not in mo.finished_picking_ids.ids
+                    and p.state not in ('done', 'cancel')
+                )
+                for p in auto_sam_pickings:
+                    p.action_cancel()
+
+        return res
 
     def action_quick_fill_scale_input(self):
         """Tự động cập nhật khối lượng đá thô cấp liệu vào dòng nguyên liệu tiêu hao
@@ -256,7 +391,7 @@ class MrpProduction(models.Model):
 
         target_move = self._get_quarry_raw_stone_move()
         if not target_move:
-            raise UserError(_('Không tìm thấy dòng nguyên liệu đá thô phù hợp trong tab Thành phần để cập nhật!'))
+            raise UserError(_('Không tìm thấy dòng nguyên liệu đá thô phù hợp trong tab Nguyên Liệu để cập nhật!'))
 
         new_qty = self.raw_stone_input_qty
         prod = target_move.product_id
@@ -277,7 +412,7 @@ class MrpProduction(models.Model):
             )
 
         messages = [
-            _('1. Tab Thành Phần: Đã cập nhật %s thành %s Tấn.') % (prod.display_name, new_qty)
+            _('1. Tab Nguyên Liệu: Đã cập nhật %s thành %s Tấn.') % (prod.display_name, new_qty)
         ]
         notification_type = 'success'
 
@@ -345,5 +480,6 @@ class MrpProduction(models.Model):
                 'message': " \n".join(messages),
                 'type': notification_type,
                 'sticky': True if notification_type in ('warning', 'danger') else False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
             }
         }

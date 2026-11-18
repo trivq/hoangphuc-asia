@@ -27,6 +27,7 @@ Căn cứ theo Biểu mẫu quy trình Sản xuất trực tiếp mỏ đá (SXT
     'depends': ['base', 'mrp', 'hoangphuc_stock'],
     'data': [
         'views/mrp_production_views.xml',
+        'views/stock_picking_views.xml',
     ],
     'installable': True,
     'application': False,

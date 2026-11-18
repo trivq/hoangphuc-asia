@@ -289,7 +289,7 @@ class StockPicking(models.Model):
                 qty = round(self.net_weight / 1000.0, 3)
 
             move.quantity = qty
-            if 'product_uom_qty' in move._fields and not move.product_uom_qty:
+            if 'product_uom_qty' in move._fields:
                 move.product_uom_qty = qty
         return True
 
@@ -300,6 +300,9 @@ class StockPicking(models.Model):
             raise UserError(_('Khối lượng tịnh phải lớn hơn 0 trước khi cập nhật!'))
 
         self._apply_scale_to_moves()
+        if self.state == 'draft':
+            self.with_context(skip_zero_demand_check=True).action_confirm()
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -308,15 +311,29 @@ class StockPicking(models.Model):
                 'message': _('Đã cập nhật khối lượng tịnh (%s Kg / %s m³) vào phiếu kho!') % (self.net_weight, self.volume_m3),
                 'type': 'success',
                 'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
             }
         }
 
     def button_validate(self):
         """Tự động đồng bộ số lượng từ trạm cân trước khi hoàn tất phiếu kho."""
         for picking in self:
-            if picking.show_scale_tab and picking.net_weight > 0:
+            if (picking.show_scale_tab or picking.show_explosive_tab) and picking.net_weight > 0:
                 picking._apply_scale_to_moves()
+        pickings_scale = self.filtered(lambda p: p.show_scale_tab or p.show_explosive_tab)
+        if pickings_scale:
+            return super(StockPicking, self.with_context(skip_zero_demand_check=True)).button_validate()
         return super().button_validate()
+
+    def action_confirm(self):
+        """Tự động đồng bộ số lượng từ trạm cân trước khi xác nhận phiếu kho."""
+        for picking in self:
+            if (picking.show_scale_tab or picking.show_explosive_tab) and picking.net_weight > 0:
+                picking._apply_scale_to_moves()
+        pickings_scale = self.filtered(lambda p: p.show_scale_tab or p.show_explosive_tab)
+        if pickings_scale:
+            return super(StockPicking, self.with_context(skip_zero_demand_check=True)).action_confirm()
+        return super().action_confirm()
 
     def action_print_scale_ticket(self):
         """In phiếu cân điện tử chuẩn mỏ đá."""

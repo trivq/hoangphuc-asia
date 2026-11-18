@@ -6,21 +6,36 @@
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
         <field name="arch" type="xml">
-            <!-- Thêm nút Áp Khối Lượng Cấp Liệu trên Header -->
+            <!-- Thêm nút Áp Khối Lượng Cấp Liệu và Tạo Phiếu Cân Thành Phẩm trên Header -->
             <xpath expr="//header" position="inside">
                 <button name="action_quick_fill_scale_input" string="Áp Đá Thô Cấp Liệu" type="object" class="btn-secondary" icon="fa-balance-scale" invisible="state in ('draft', 'done', 'cancel') or not raw_stone_input_qty"/>
+                <button name="action_create_finished_picking" string="Tạo Phiếu Cân TP" type="object" class="btn-primary" icon="fa fa-truck" invisible="state not in ('progress')"/>
             </xpath>
 
-            <!-- Thêm Smart Button mở các phiếu chuyển hàng liên quan vào Button Box -->
-            <!-- <xpath expr="//div[@name='button_box']" position="inside">
-                <button class="oe_stat_button" name="action_view_related_pickings" type="object" icon="fa-truck"
-                        invisible="quarry_picking_count == 0">
-                    <field name="quarry_picking_count" widget="statinfo" string="Phiếu Chuyển Kho"/>
+            <!-- Thêm Smart Button mở các phiếu cân thành phẩm vào Button Box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" name="action_view_finished_pickings" type="object" icon="fa-cubes"
+                        invisible="finished_trips_count == 0">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value"><field name="finished_trips_count"/> Chuyến</span>
+                        <span class="o_stat_text"><field name="finished_stone_total_qty"/> Tấn Đá</span>
+                    </div>
                 </button>
-            </xpath> -->
+            </xpath>
 
-            <!-- Thêm Tab Điều Hành Trạm Nghiền Mỏ vào Notebook -->
-            <xpath expr="//notebook" position="inside">
+            <!-- 1. Đổi tên Tab Components ("Thành phần") thành "Nguyên Liệu" -->
+            <xpath expr="//page[@name='components']" position="attributes">
+                <attribute name="string">Nguyên Liệu</attribute>
+            </xpath>
+
+            <!-- 4. Đổi tên Tab Miscellaneous thành "Thông Tin Chung" -->
+            <xpath expr="//page[@name='miscellaneous']" position="attributes">
+                <attribute name="string">Thông Tin Chung</attribute>
+            </xpath>
+
+            <!-- Chèn 2 Tab: "Điều Hành Trạm Nghiền Mỏ" và "Thành Phẩm Nhập Kho" ngay sau Tab Nguyên Liệu -->
+            <xpath expr="//page[@name='components']" position="after">
+                <!-- 2. Tab Điều Hành Trạm Nghiền Mỏ -->
                 <page string="Điều Hành Trạm Nghiền Mỏ" name="quarry_mrp_info">
                     <group>
                         <group string="Thông Tin Trạm Nghiền &amp; Ca Kíp">
@@ -48,12 +63,43 @@
                         </group>
                     </group>
                 </page>
+
+                <!-- 3. Tab Thành Phẩm Nhập Kho -->
+                <page string="Thành Phẩm Nhập Kho" name="finished_goods_page">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge text-bg-primary fs-6 me-2 p-2">
+                                Tổng Chuyến Xe Cân: <field name="finished_trips_count" class="fw-bold"/> Chuyến
+                            </span>
+                            <span class="badge text-bg-success fs-6 p-2">
+                                Tổng Đá Nhập Bãi: <field name="finished_stone_total_qty" class="fw-bold"/> Tấn
+                            </span>
+                        </div>
+                        <button name="action_create_finished_picking" string="Thêm Chuyến Xe Thành Phẩm" type="object" class="btn btn-secondary btn-sm" icon="fa-plus" invisible="state not in ('confirmed', 'progress')"/>
+                    </div>
+                    <field name="finished_move_ids" readonly="1">
+                        <list string="Dịch Chuyển Thành Phẩm Nhập Bãi" no_open="1" create="0" delete="0" edit="0" decoration-success="state == 'done'" decoration-info="state in ('confirmed', 'assigned')" decoration-muted="state == 'cancel'">
+                            <field name="picking_id" string="Mã Phiếu Cân" options="{'no_open': True}"/>
+                            <field name="scale_weigh_time" string="Giờ Cân Xe"/>
+                            <field name="scale_vehicle_plate" string="Biển Số Xe (BKS)"/>
+                            <field name="scale_driver_name" string="Tài Xế"/>
+                            <field name="product_id" string="Loại Đá Thành Phẩm"/>
+                            <field name="scale_gross_weight" string="Tổng (Kg)" optional="show"/>
+                            <field name="scale_tare_weight" string="Bì (Kg)" optional="show"/>
+                            <field name="scale_net_weight" string="Tịnh (Kg)" optional="show"/>
+                            <field name="quantity" string="Khối Lượng (Tấn)" sum="Tổng Tấn"/>
+                            <field name="scale_volume_m3" string="Thể Tích (m³)" sum="Tổng m³" optional="show"/>
+                            <field name="location_dest_id" string="Bãi Tập Kết"/>
+                            <field name="state" widget="badge" decoration-success="state == 'done'" decoration-info="state in ('confirmed', 'assigned')" decoration-muted="state == 'cancel'"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>
 
     <!-- Kế thừa Tree/List View của Lệnh Sản Xuất để hiển thị nhanh Trạm, Ca và Cấp liệu -->
-    <record id="mrp_production_tree_view_inherit_hoangphuc" model="ir.ui.view">
+    <!-- <record id="mrp_production_tree_view_inherit_hoangphuc" model="ir.ui.view">
         <field name="name">mrp.production.tree.view.inherit.hoangphuc</field>
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_tree_view"/>
@@ -62,9 +108,11 @@
                 <field name="crushing_plant" optional="show"/>
                 <field name="production_shift" optional="show"/>
                 <field name="raw_stone_input_qty" optional="show" sum="Tổng Đá Thô (Tấn)"/>
-                <field name="vehicle_trips_count" optional="show" sum="Tổng Chuyến"/>
+                <field name="vehicle_trips_count" optional="show" sum="Tổng Chuyến Đầu Vào"/>
+                <field name="finished_trips_count" optional="show" sum="Tổng Chuyến Thành Phẩm"/>
+                <field name="finished_stone_total_qty" optional="show" sum="Tổng Đá Thành Phẩm (Tấn)"/>
                 <field name="downtime_minutes" optional="show" sum="Tổng Phút Dừng"/>
             </xpath>
         </field>
-    </record>
+    </record> -->
 </odoo>

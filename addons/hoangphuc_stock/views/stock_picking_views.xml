@@ -6,10 +6,10 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
-            <!-- Thêm nút In Phiếu Cân và Áp Số Lượng Cân trên Header (Chỉ hiển thị khi là phiếu trạm cân và có khối lượng tịnh) -->
+            <!-- Thêm nút In Phiếu Cân và Áp Số Lượng Cân trên Header (Chỉ hiển thị khi là phiếu trạm cân và có khối lượng tịnh, ẩn khi đã Hoàn thành/Hủy) -->
             <xpath expr="//header" position="inside">
-                <button name="action_print_scale_ticket" string="In Phiếu Cân" type="object" class="btn-secondary" icon="fa-print" invisible="not show_scale_tab or not net_weight"/>
-                <button name="action_apply_scale_to_moves" string="Áp Khối Lượng Cân" type="object" class="btn-primary" icon="fa-balance-scale" invisible="not show_scale_tab or not net_weight"/>
+                <button name="action_print_scale_ticket" string="In Phiếu Cân" type="object" class="btn-secondary" icon="fa-print" invisible="not show_scale_tab or not net_weight or state in ('done', 'cancel')"/>
+                <button name="action_apply_scale_to_moves" string="Áp Khối Lượng Cân" type="object" class="btn-primary" icon="fa-balance-scale" invisible="not show_scale_tab or not net_weight or state in ('done', 'cancel')"/>
             </xpath>
 
             <!-- Hiển thị Trạng Thái của từng dòng Stock Move để người dùng theo dõi rõ ràng (Draft / Waiting / Ready / Done) -->
@@ -32,18 +32,23 @@
 
             <!-- Thêm các Tab chuyên biệt theo từng loại hoạt động kho vào Notebook -->
             <xpath expr="//notebook" position="inside">
-                <!-- 1. Tab Trạm Cân Mỏ Đá: Tự động hiển thị khi là Kho / Hoạt động Đá Thành Phẩm (hoặc bật cờ cân xe) -->
+                <!-- 1. Tab Trạm Cân Mỏ Đá: Tự động hiển thị khi là Kho / Hoạt động Đá Thành Phẩm (hoặc có xe cân) -->
                 <page string="Trạm Cân Mỏ Đá" name="scale_info" invisible="not show_scale_tab">
                     <group>
                         <group string="Thông Tin Phương Tiện &amp; Cân">
-                            <field name="is_scale_picking" widget="boolean_toggle"/>
+                            <field name="scale_equipment_id" options="{'no_create_edit': True}" placeholder="Chọn xe mỏ hoặc gõ biển số bên dưới..."/>
                             <field name="vehicle_plate" placeholder="VD: 36C-123.45"/>
                             <field name="driver_name" placeholder="Họ tên tài xế"/>
                             <field name="weigh_scale_number"/>
+                            <field name="weigh_time"/>
                             <field name="crushing_plant"/>
                         </group>
                         <group string="Khối Lượng &amp; Thể Tích Quy Đổi">
-                            <field name="tare_weight"/>
+                            <label for="tare_weight"/>
+                            <div class="o_row">
+                                <field name="tare_weight"/>
+                                <button name="action_update_equipment_tare" type="object" string="Lưu Bì Vào Xe" class="btn btn-sm btn-link" icon="fa-save" invisible="not scale_equipment_id or not tare_weight" help="Cập nhật khối lượng bì này làm bì chuẩn trong hồ sơ xe mỏ"/>
+                            </div>
                             <field name="gross_weight"/>
                             <div class="o_td_label">
                                 <label for="net_weight" string="Khối Lượng Tịnh (Kg)" style="font-weight: bold; color: #007bff;"/>
@@ -54,8 +59,6 @@
                                 <label for="volume_m3" string="Thể Tích Quy Đổi (m³)" style="font-weight: bold; color: #28a745;"/>
                             </div>
                             <field name="volume_m3" nolabel="1" style="font-weight: bold; font-size: 16px; color: #28a745;"/>
-                            <field name="weigh_time_first"/>
-                            <field name="weigh_time_second"/>
                         </group>
                     </group>
                 </page>
@@ -101,11 +104,10 @@
         <field name="inherit_id" ref="stock.vpicktree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='origin']" position="after">
-                <!-- <field name="picking_category" optional="show" widget="badge"
-                       decoration-info="picking_category == 'stone'"
-                       decoration-warning="picking_category == 'spare_parts'"
-                       decoration-danger="picking_category == 'explosives'"/> -->
+                <field name="scale_equipment_id" optional="hide"/>
                 <field name="vehicle_plate" optional="show"/>
+                <field name="driver_name" optional="show"/>
+                <field name="tare_weight" optional="hide"/>
                 <field name="equipment_id" optional="show" string="Thiết Bị Nhận VT"/>
                 <field name="blasting_passport_code" optional="show" string="Hộ Chiếu Nổ Mìn"/>
                 <field name="net_weight" optional="show" sum="Tổng Kg"/>

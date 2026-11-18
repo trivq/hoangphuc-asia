@@ -474,6 +474,8 @@ def populate_demo_data(cr):
         {
             'name': 'Máy Xúc Đào Komatsu PC450-8',
             'vehicle_plate': 'EX-01',
+            'driver_name': 'Nguyễn Văn Mạnh',
+            'tare_weight': 44500.0,
             'equipment_quarry_type': 'excavator',
             'standard_fuel_rate': 32.5,
             'pre_shift_safety_status': 'safe',
@@ -481,6 +483,8 @@ def populate_demo_data(cr):
         {
             'name': 'Máy Xúc Đào Hitachi Zaxis 350',
             'vehicle_plate': 'EX-02',
+            'driver_name': 'Hoàng Văn Thái',
+            'tare_weight': 34800.0,
             'equipment_quarry_type': 'excavator',
             'standard_fuel_rate': 28.0,
             'pre_shift_safety_status': 'locked',
@@ -489,6 +493,8 @@ def populate_demo_data(cr):
         {
             'name': 'Xe Ben Mỏ Howo 371HP (3 Giò)',
             'vehicle_plate': '36C-284.91',
+            'driver_name': 'Lê Văn Hùng',
+            'tare_weight': 12500.0,
             'equipment_quarry_type': 'truck',
             'standard_fuel_rate': 18.0,
             'pre_shift_safety_status': 'safe',
@@ -496,6 +502,8 @@ def populate_demo_data(cr):
         {
             'name': 'Xe Ben Mỏ Howo 371HP (4 Giò)',
             'vehicle_plate': '36C-315.68',
+            'driver_name': 'Trần Đình Trọng',
+            'tare_weight': 15200.0,
             'equipment_quarry_type': 'truck',
             'standard_fuel_rate': 21.0,
             'pre_shift_safety_status': 'safe',
@@ -503,6 +511,8 @@ def populate_demo_data(cr):
         {
             'name': 'Trạm Nghiền Sàng Liên Hợp 250 T/h',
             'vehicle_plate': 'CRUSH-01',
+            'driver_name': 'Phạm Đức Thành',
+            'tare_weight': 0.0,
             'equipment_quarry_type': 'crusher',
             'standard_fuel_rate': 65.0,
             'pre_shift_safety_status': 'safe',
@@ -713,14 +723,13 @@ def populate_demo_data(cr):
 
     # 9.1 PHIẾU CÂN XE TRẠM CÂN MỎ ĐÁ (KHO THÀNH PHẨM)
     # Phiếu cân xuất bán: Howo 36C-284.91
-    existing_p1 = picking_obj.search([('vehicle_plate', '=', '36C-284.91'), ('is_scale_picking', '=', True)], limit=1)
+    existing_p1 = picking_obj.search([('vehicle_plate', '=', '36C-284.91'), ('picking_type_id', '=', wh_main.out_type_id.id)], limit=1)
     if not existing_p1:
         p1 = picking_obj.create({
             'picking_type_id': wh_main.out_type_id.id,
             'partner_id': customer_1.id,
             'location_id': wh_main.lot_stock_id.id,
             'location_dest_id': customer_1.property_stock_customer.id,
-            'is_scale_picking': True,
             'vehicle_plate': '36C-284.91',
             'driver_name': 'Nguyễn Văn Mạnh',
             'weigh_scale_number': 'Trạm Cân Số 1',
@@ -741,11 +750,10 @@ def populate_demo_data(cr):
         })
 
     # Phiếu cân nhập đá thô moong mỏ: Howo 36C-315.68
-    existing_p2 = picking_obj.search([('vehicle_plate', '=', '36C-315.68'), ('is_scale_picking', '=', True)], limit=1)
+    existing_p2 = picking_obj.search([('vehicle_plate', '=', '36C-315.68'), ('picking_type_id', '=', wh_main.in_type_id.id)], limit=1)
     if not existing_p2:
         p2 = picking_obj.create({
             'picking_type_id': wh_main.in_type_id.id,
-            'is_scale_picking': True,
             'vehicle_plate': '36C-315.68',
             'driver_name': 'Lê Hoàng Long',
             'weigh_scale_number': 'Trạm Cân Số 2',

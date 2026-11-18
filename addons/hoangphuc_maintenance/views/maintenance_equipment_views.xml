@@ -23,9 +23,11 @@
                 <group string="Đặc Tính Cơ Giới Mỏ &amp; Tiêu Hao Nhiên Liệu">
                     <group>
                         <field name="vehicle_plate" placeholder="VD: EX-01, 36C-123.45"/>
+                        <field name="driver_name" placeholder="VD: Nguyễn Văn A"/>
                         <field name="equipment_quarry_type"/>
                     </group>
                     <group>
+                        <field name="tare_weight"/>
                         <field name="standard_fuel_rate"/>
                         <field name="safety_lock_reason" invisible="pre_shift_safety_status != 'locked'" placeholder="Lý do khóa máy khẩn cấp..."/>
                     </group>
@@ -41,6 +43,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="vehicle_plate" optional="show"/>
+                <field name="driver_name" optional="show"/>
+                <field name="tare_weight" optional="show"/>
                 <field name="equipment_quarry_type" optional="show"/>
                 <field name="standard_fuel_rate" optional="show"/>
                 <field name="pre_shift_safety_status" widget="badge" optional="show"

@@ -20,7 +20,7 @@ Mở rộng Ứng dụng Kho (Inventory / Stock) cho Mỏ đá Hoàng Phúc:
     """,
     'author': 'Tri Vo - Paracel',
     'website': 'https://hoangphucstone.vn',
-    'depends': ['base', 'stock', 'product'],
+    'depends': ['base', 'stock', 'product', 'hoangphuc_maintenance'],
     'data': [
         'views/stock_picking_views.xml',
         'views/product_views.xml',

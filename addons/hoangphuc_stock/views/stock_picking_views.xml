@@ -47,7 +47,7 @@
                             <label for="tare_weight"/>
                             <div class="o_row">
                                 <field name="tare_weight"/>
-                                <button name="action_update_equipment_tare" type="object" string="Lưu Bì Vào Xe" class="btn btn-sm btn-link" icon="fa-save" invisible="not scale_equipment_id or not tare_weight" help="Cập nhật khối lượng bì này làm bì chuẩn trong hồ sơ xe mỏ"/>
+                                <!-- <button name="action_update_equipment_tare" type="object" string="Lưu Bì Vào Xe" class="btn btn-sm btn-link" icon="fa-save" invisible="not scale_equipment_id or not tare_weight" help="Cập nhật khối lượng bì này làm bì chuẩn trong hồ sơ xe mỏ"/> -->
                             </div>
                             <field name="gross_weight"/>
                             <div class="o_td_label">

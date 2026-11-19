@@ -102,9 +102,32 @@
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='waiting_rfqs']" position="after">
                 <separator/>
+                <filter name="filter_need_my_approval" string="Cần Phê Duyệt" domain="[('need_my_approval', '=', True)]"/>
                 <filter name="filter_waiting_gm" string="Chờ TGĐ Phê Duyệt" domain="[('state', '=', 'waiting_gm')]"/>
                 <filter name="filter_waiting_chairman" string="Chờ Chủ Tịch HĐQT Phê Duyệt" domain="[('state', '=', 'waiting_chairman')]"/>
             </xpath>
         </field>
     </record>
+
+    <!-- Cửa sổ hành động (Action) dành riêng cho các đơn hàng cần cấp thẩm quyền phê duyệt -->
+    <record id="action_purchase_order_to_approve" model="ir.actions.act_window">
+        <field name="name">Đơn Hàng Chờ Phê Duyệt</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,kanban,form,pivot,graph,calendar,activity</field>
+        <field name="domain">[('need_my_approval', '=', True)]</field>
+        <field name="search_view_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Không có đơn hàng nào đang chờ bạn phê duyệt!
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Chờ Phê Duyệt: Hiển thị ngay dưới Mua Hàng / Đơn Hàng -->
+    <menuitem id="menu_purchase_order_to_approve"
+              name="Chờ Phê Duyệt"
+              parent="purchase.menu_procurement_management"
+              action="action_purchase_order_to_approve"
+              sequence="3"/>
 </odoo>

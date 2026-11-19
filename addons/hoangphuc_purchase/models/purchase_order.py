@@ -39,6 +39,12 @@ class PurchaseOrder(models.Model):
         string='Có Quyền Trả Lại Dự Thảo',
         compute='_compute_user_approval_roles',
     )
+    need_my_approval = fields.Boolean(
+        string='Cần Phê Duyệt',
+        compute='_compute_need_my_approval',
+        search='_search_need_my_approval',
+        help='Lọc các đơn hàng đang chờ đúng cấp thẩm quyền của người dùng hiện tại phê duyệt.'
+    )
 
     equipment_id = fields.Many2one(
         'maintenance.equipment',
@@ -106,6 +112,44 @@ class PurchaseOrder(models.Model):
                 (po.state == 'waiting_gm' and is_gm) or
                 (po.state == 'waiting_chairman' and is_chairman)
             )
+
+    @api.depends_context('uid')
+    @api.depends('state')
+    def _compute_need_my_approval(self):
+        user = self.env.user
+        is_su = self.env.is_superuser()
+        is_gm = bool(user.is_general_manager or is_su)
+        is_chairman = bool(user.is_board_chairman or is_su)
+        for po in self:
+            po.need_my_approval = bool(
+                (po.state == 'waiting_gm' and is_gm) or
+                (po.state == 'waiting_chairman' and is_chairman)
+            )
+
+    def _search_need_my_approval(self, operator, value):
+        user = self.env.user
+        is_gm = bool(user.is_general_manager)
+        is_chairman = bool(user.is_board_chairman)
+        if self.env.is_superuser() and not is_gm and not is_chairman:
+            is_gm = True
+            is_chairman = True
+
+        target_states = []
+        if is_gm:
+            target_states.append('waiting_gm')
+        if is_chairman:
+            target_states.append('waiting_chairman')
+
+        is_true = value if not isinstance(value, (list, tuple, set)) else (True in value)
+        positive = (operator in ('=', 'in') and is_true) or (operator in ('!=', 'not in') and not is_true)
+
+        if not target_states:
+            return [('id', '=', False)] if positive else []
+
+        if positive:
+            return [('state', 'in', target_states)]
+        else:
+            return [('state', 'not in', target_states)]
 
     def _approval_allowed(self):
         user = self.env.user

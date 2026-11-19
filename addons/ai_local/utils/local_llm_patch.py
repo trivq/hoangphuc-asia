@@ -1,322 +1,305 @@
-# See LICENSE file for full copyright and licensing details.
+# Part of SeaOps. See LICENSE file for full copyright and licensing details.
 """
-Patch LLMApiService to support OpenAI-compatible local LLMs.
+Patch Odoo 20 AI module to support OpenAI-compatible local LLMs (Ollama, vLLM, LM Studio, etc.).
 
-Odoo AI uses OpenAI's new "Responses API" (/v1/responses), but most local LLM
-servers (Ollama, vLLM, LM Studio, LiteLLM) only implement the older
-"Chat Completions API" (/v1/chat/completions).
+In Odoo 20, all AI interactions (chat, agent loops, completions) flow through:
+    odoo.addons.ai.utils.ai_utils.call_odoo_ai_transport
+and
+    odoo.addons.ai.utils.ai_utils.call_odoo_ai
 
-This patch:
-  1. Registers a local model in Odoo's provider list so it appears in the UI.
-  2. Overrides the base URL to point to the local server.
-  3. Translates Odoo's Responses-API calls → Chat Completions format.
-  4. Translates Chat Completions responses → Odoo's expected format.
-
-System Parameters to configure (Settings > Technical > System Parameters):
-    ai.local_base_url   e.g. http://localhost:11434/v1
-    ai.local_api_key    e.g. "ollama" (any string works if server has no auth)
-    ai.local_model      e.g. "llama3.2" or "qwen2.5:7b"
+This patch intercepts those calls when `ai.local_ai_enabled` is True:
+1. Translates Odoo 20 Message parts -> OpenAI /chat/completions format.
+2. Sends the request to the local server (e.g. Ollama, vLLM, LM Studio).
+3. Translates the response back to Odoo 20 AssistantMessage format.
+4. For synchronous calls: returns {'result': AssistantMessage}.
+5. For asynchronous calls: directly resolves the waiting ai.session state machine.
 """
 import json
 import logging
+import uuid
+import requests
 
-from odoo.addons.ai.utils.llm_providers import PROVIDERS, Provider
-from odoo.addons.ai.utils.llm_api_service import LLMApiService
+import odoo
+from odoo import api
+from odoo.modules.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 1: Register local model in the openai provider's dropdown list
-#
-# Why openai? Because Odoo's ai.agent model stores "provider" as one of
-# ('openai', 'google'). We piggyback on openai so no DB schema changes needed.
-# The local URL/key are stored separately in ir.config_parameter.
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _register_local_model():
-    """Add local model entries to the OpenAI provider's model list."""
-    for provider in PROVIDERS:
-        if provider.name == 'openai':
-            # provider.llms is a list (mutable despite being in a NamedTuple)
-            existing_ids = {m[0] for m in provider.llms}
-
-            local_models = [
-                ('local-default', 'Local AI (default model)'),
-            ]
-            for model_id, model_label in local_models:
-                if model_id not in existing_ids:
-                    provider.llms.append((model_id, model_label))
-                    _logger.info("AI: registered local model '%s' in provider list", model_id)
-            break
-
-_register_local_model()
+try:
+    from odoo.addons.ai.utils import ai_utils
+except ImportError:
+    _logger.warning("ai_local: Odoo 20 module 'ai' not found or ai_utils missing, patch skipped.")
+    ai_utils = None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 2: Patch __init__ to detect when we're targeting the local server
-#
-# Logic:
-#   - If provider == 'openai' AND ai.local_base_url is configured
-#     → override base_url + enable chat/completions mode
-#   - Otherwise → behave normally (real OpenAI)
-# ──────────────────────────────────────────────────────────────────────────────
-
-_orig_init = LLMApiService.__init__
-
-def _patched_init(self, env, provider='openai'):
-    _orig_init(self, env, provider)
-    self._use_chat_completions = False
-
-    if provider == 'openai':
-        local_url = env['ir.config_parameter'].sudo().get_param('ai.local_base_url')
-        if local_url:
-            self.base_url = local_url.rstrip('/')
-            self._use_chat_completions = True
-            _logger.debug("AI: using local LLM at %s", self.base_url)
-
-LLMApiService.__init__ = _patched_init
+def _format_endpoint_url(base_url):
+    """Normalize base URL to /chat/completions endpoint."""
+    url = (base_url or "").strip().rstrip("/")
+    if not url:
+        return ""
+    if url.endswith("/chat/completions"):
+        return url
+    if url.endswith("/v1"):
+        return f"{url}/chat/completions"
+    return f"{url}/v1/chat/completions"
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 3: Patch _get_api_token to use local key when available
-#
-# When local_base_url is set, try ai.local_api_key first.
-# If not set, fall through to the normal openai key logic.
-# ──────────────────────────────────────────────────────────────────────────────
+def _convert_odoo_to_openai_messages(messages, instructions):
+    """Convert Odoo 20 messages into OpenAI chat completions payload."""
+    openai_messages = []
+    if instructions:
+        openai_messages.append({"role": "system", "content": instructions})
 
-_orig_get_api_token = LLMApiService._get_api_token
+    for msg in messages or []:
+        role = msg.get("role")
+        content_parts = msg.get("content")
 
-def _patched_get_api_token(self):
-    if getattr(self, '_use_chat_completions', False):
-        local_key = self.env['ir.config_parameter'].sudo().get_param('ai.local_api_key')
-        if local_key:
-            return local_key
-    return _orig_get_api_token(self)
+        if isinstance(content_parts, str):
+            openai_messages.append({"role": role or "user", "content": content_parts})
+            continue
 
-LLMApiService._get_api_token = _patched_get_api_token
+        text_parts = []
+        tool_calls = []
+
+        for part in content_parts or []:
+            if not isinstance(part, dict):
+                continue
+            ptype = part.get("type")
+            if ptype == "text":
+                text_parts.append(part.get("text", ""))
+            elif ptype == "tool_call":
+                tool_calls.append({
+                    "id": str(part.get("call_id") or uuid.uuid4()),
+                    "type": "function",
+                    "function": {
+                        "name": part.get("name"),
+                        "arguments": json.dumps(part.get("args") or {}) if isinstance(part.get("args"), dict) else str(part.get("args") or "{}"),
+                    },
+                })
+            elif ptype == "tool_result":
+                res_content = ""
+                res = part.get("result") or []
+                if isinstance(res, list):
+                    for rp in res:
+                        if isinstance(rp, dict) and rp.get("type") == "text":
+                            res_content += rp.get("text", "")
+                if not res_content:
+                    res_content = json.dumps(res) if not isinstance(res, str) else res
+                openai_messages.append({
+                    "role": "tool",
+                    "tool_call_id": str(part.get("tool_call_id") or ""),
+                    "content": res_content,
+                })
+
+        if role in ("user", "assistant"):
+            m = {"role": role}
+            if text_parts:
+                m["content"] = "".join(text_parts)
+            if tool_calls and role == "assistant":
+                m["tool_calls"] = tool_calls
+            if m.get("content") or m.get("tool_calls"):
+                openai_messages.append(m)
+
+    return openai_messages
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 4: Patch _request_llm to dispatch to our chat/completions handler
-# ──────────────────────────────────────────────────────────────────────────────
+def _convert_openai_to_odoo_response(choice_message):
+    """Convert OpenAI message back into Odoo 20 AssistantMessage structure."""
+    content_parts = []
+    text = choice_message.get("content")
+    if text:
+        content_parts.append({"type": "text", "text": text})
 
-_orig_request_llm = LLMApiService._request_llm
-
-def _patched_request_llm(self, *args, **kwargs):
-    if getattr(self, '_use_chat_completions', False):
-        return self._request_llm_chat_completions(*args, **kwargs)
-    return _orig_request_llm(self, *args, **kwargs)
-
-LLMApiService._request_llm = _patched_request_llm
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 5: Add the actual chat/completions request method
-#
-# Translates from Odoo's Responses API format to Chat Completions format.
-#
-# Odoo Responses API body:
-#   { "model": "...",
-#     "input": [
-#       {"role": "system", "content": [{"type": "input_text", "text": "..."}]},
-#       {"role": "user",   "content": [{"type": "input_text", "text": "..."}]},
-#     ],
-#     "tools": [{"type": "function", "name": "...", "strict": True, ...}] }
-#
-# Chat Completions body:
-#   { "model": "...",
-#     "messages": [
-#       {"role": "system", "content": "..."},
-#       {"role": "user",   "content": "..."},
-#     ],
-#     "tools": [{"type": "function", "function": {"name": "...", ...}}] }
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _request_llm_chat_completions(
-    self, llm_model, system_prompts, user_prompts, tools=None,
-    files=None, schema=None, temperature=0.2, inputs=(), web_grounding=False
-):
-    """Send a chat/completions request to the local LLM server."""
-
-    # Resolve actual model name from config (allows 'local-default' → real name)
-    actual_model = self.env['ir.config_parameter'].sudo().get_param('ai.local_model') or llm_model
-
-    # ── Build messages ────────────────────────────────────────────────────────
-    messages = []
-
-    # System prompt (combine all into one message)
-    if system_prompts:
-        messages.append({
-            "role": "system",
-            "content": "\n\n".join(system_prompts),
+    tool_calls = choice_message.get("tool_calls") or []
+    for tc in tool_calls:
+        fn = tc.get("function") or {}
+        raw_args = fn.get("arguments") or "{}"
+        try:
+            parsed_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+        except Exception:
+            parsed_args = raw_args
+        content_parts.append({
+            "type": "tool_call",
+            "name": fn.get("name"),
+            "args": parsed_args,
+            "call_id": str(tc.get("id") or uuid.uuid4()),
         })
 
-    # History: inputs come in as tool responses or previous assistant messages.
-    # They are already in Chat Completions format because we built them that way
-    # in _patched_build_tool_call_response below.
-    for inp in (inputs or []):
-        messages.append(inp)
-
-    # User message (combine text + file content)
-    user_parts = list(user_prompts)
-    if files:
-        for f in files:
-            if f.get("mimetype") == "text/plain":
-                user_parts.append(f["value"])
-            # Note: images/PDFs are skipped — most local models don't support them
-
-    messages.append({
-        "role": "user",
-        "content": "\n\n".join(user_parts),
-    })
-
-    # ── Build request body ────────────────────────────────────────────────────
-    body = {
-        "model": actual_model,
-        "messages": messages,
-        "temperature": temperature,
-        "stream": False,  # CRITICAL: prevent streaming (NDJSON) response
+    return {
+        "result": {
+            "role": "assistant",
+            "content": content_parts,
+            "provider_metadata": {},
+        }
     }
 
-    # Structured output via JSON schema (not all local models support this)
-    if schema:
-        body["response_format"] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "response_schema",
-                "schema": schema,
-                "strict": True,
-            },
-        }
 
-    # Tools — translate from Odoo's format to Chat Completions format
+def _call_local_llm(base_url, api_key, model, messages, instructions, tools=None, timeout=60):
+    """Dispatch HTTP request to OpenAI-compatible endpoint."""
+    url = _format_endpoint_url(base_url)
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    payload = {
+        "model": model or "llama3",
+        "messages": _convert_odoo_to_openai_messages(messages, instructions),
+    }
     if tools:
-        body["tools"] = [
+        payload["tools"] = [
             {
                 "type": "function",
                 "function": {
-                    "name": tool_name,
-                    "description": tool_description,
-                    "parameters": tool_parameter_schema,
+                    "name": t.get("name"),
+                    "description": t.get("description", ""),
+                    "parameters": t.get("parameters", {}),
                 },
             }
-            for tool_name, (tool_description, __, __, tool_parameter_schema) in tools.items()
+            for t in tools if isinstance(t, dict) and t.get("name")
         ]
-        body["tool_choice"] = "auto"
 
-    # ── Make the HTTP request ─────────────────────────────────────────────────
-    # Local/remote LLMs can take much longer than 30s (default) to generate.
-    # Use a configurable timeout, defaulting to 300s (5 minutes).
-    timeout = int(self.env['ir.config_parameter'].sudo().get_param('ai.local_timeout', '300'))
-    _logger.debug("AI: POST %s/chat/completions model=%s timeout=%ss", self.base_url, actual_model, timeout)
-    response = self._request(
-        method="post",
-        endpoint="/chat/completions",
-        headers=self._get_base_headers(),
-        body=body,
-        timeout=timeout,
-    )
+    _logger.info("ai_local: calling %s (model: %s)", url, payload["model"])
+    resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    resp.raise_for_status()
+    data = resp.json()
 
-    return self._parse_chat_completions_response(response, tools, inputs)
-
-
-def _parse_chat_completions_response(self, response, tools=None, inputs=()):
-    """
-    Parse a /chat/completions response into Odoo's expected 3-tuple:
-        (text_responses, tools_to_call, next_inputs)
-
-    Chat Completions response format:
-        { "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "text response OR null if tool call",
-                "tool_calls": [{
-                    "id": "call_abc123",
-                    "type": "function",
-                    "function": { "name": "...", "arguments": "{...}" }
-                }]
-            }
-        }] }
-    """
-    choices = response.get("choices") or []
+    choices = data.get("choices") or []
     if not choices:
-        _logger.warning("AI: empty choices in response: %s", response)
-        return [], [], list(inputs or [])
+        raise ValueError(f"No choices returned from LLM: {data}")
 
-    message = choices[0].get("message") or {}
-    content = message.get("content") or ""
-    tool_calls = message.get("tool_calls") or []
+    return _convert_openai_to_odoo_response(choices[0].get("message") or {})
 
-    text_responses = []
-    to_call = []
-    next_inputs = list(inputs or [])
 
-    if tool_calls:
-        # Add the assistant's message (with tool_calls) to conversation history
-        # so the model knows what tools it already called
-        next_inputs.append({
-            "role": "assistant",
-            "content": None,
-            "tool_calls": tool_calls,
-        })
+def _get_local_config(env=None, dbname=None):
+    """Safely fetch local AI configuration parameters."""
+    try:
+        if env:
+            ICP = env["ir.config_parameter"].sudo()
+            enabled = ICP.get_param("ai.local_ai_enabled")
+            if enabled:
+                return {
+                    "enabled": True,
+                    "base_url": ICP.get_param("ai.local_base_url"),
+                    "api_key": ICP.get_param("ai.local_api_key"),
+                    "model": ICP.get_param("ai.local_model"),
+                }
+    except Exception:
+        pass
 
-        for tc in tool_calls:
-            fn = tc.get("function") or {}
-            tool_name = fn.get("name", "")
-            call_id = tc.get("id") or tool_name
+    try:
+        from odoo.http import request
+        if request and hasattr(request, "env") and request.env:
+            ICP = request.env["ir.config_parameter"].sudo()
+            enabled = ICP.get_param("ai.local_ai_enabled")
+            if enabled:
+                return {
+                    "enabled": True,
+                    "base_url": ICP.get_param("ai.local_base_url"),
+                    "api_key": ICP.get_param("ai.local_api_key"),
+                    "model": ICP.get_param("ai.local_model"),
+                }
+    except Exception:
+        pass
 
+    if dbname:
+        try:
+            registry = Registry(dbname)
+            with registry.cursor() as cr:
+                env_local = api.Environment(cr, odoo.SUPERUSER_ID, {})
+                ICP = env_local["ir.config_parameter"].sudo()
+                enabled = ICP.get_param("ai.local_ai_enabled")
+                if enabled:
+                    return {
+                        "enabled": True,
+                        "base_url": ICP.get_param("ai.local_base_url"),
+                        "api_key": ICP.get_param("ai.local_api_key"),
+                        "model": ICP.get_param("ai.local_model"),
+                    }
+        except Exception:
+            pass
+
+    return {"enabled": False}
+
+
+if ai_utils:
+    _orig_call_odoo_ai_transport = ai_utils.call_odoo_ai_transport
+    _orig_call_odoo_ai = ai_utils.call_odoo_ai
+
+    def _patched_call_odoo_ai(env, route, params, add_iap_token=True, timeout=60):
+        config = _get_local_config(env=env)
+        if config.get("enabled") and config.get("base_url"):
+            _logger.info("ai_local: intercepting call_odoo_ai route '%s'", route)
             try:
-                arguments = json.loads(fn.get("arguments") or "{}")
-            except json.JSONDecodeError:
-                _logger.error("AI: malformed tool arguments: %s", fn)
-                arguments = {}
+                return _call_local_llm(
+                    base_url=config["base_url"],
+                    api_key=config.get("api_key"),
+                    model=config.get("model"),
+                    messages=params.get("messages"),
+                    instructions=params.get("instructions"),
+                    tools=params.get("tools"),
+                    timeout=timeout or 60,
+                )
+            except Exception as e:
+                _logger.exception("ai_local: call_odoo_ai failed: %s", e)
+                raise
+        return _orig_call_odoo_ai(env, route, params, add_iap_token=add_iap_token, timeout=timeout)
 
-            # Clean up empty or falsy __end_message to prevent early termination
-            # with an empty response (ValueError: Processing loop ended with no response).
-            if "__end_message" in arguments:
-                val = arguments["__end_message"]
-                if not val or (isinstance(val, str) and not val.strip()):
-                    arguments.pop("__end_message")
+    def _patched_call_odoo_ai_transport(connection, route, params, timeout=30, *, raise_user_error=True):
+        dbname = params.get("webhook_dbname") or connection.get("dbuuid")
+        config = _get_local_config(dbname=dbname)
 
-            to_call.append((tool_name, call_id, arguments))
+        if not config.get("enabled") or not config.get("base_url"):
+            return _orig_call_odoo_ai_transport(connection, route, params, timeout=timeout, raise_user_error=raise_user_error)
 
-    elif content:
-        text_responses.append(content)
+        _logger.info("ai_local: intercepting call_odoo_ai_transport route '%s'", route)
+        messages = params.get("messages") or []
+        instructions = params.get("instructions") or ""
+        tools = params.get("tools")
 
-    return text_responses, to_call, next_inputs
+        try:
+            llm_result = _call_local_llm(
+                base_url=config["base_url"],
+                api_key=config.get("api_key"),
+                model=config.get("model"),
+                messages=messages,
+                instructions=instructions,
+                tools=tools,
+                timeout=timeout or 60,
+            )
+        except Exception as e:
+            _logger.exception("ai_local: local LLM request failed: %s", e)
+            if raise_user_error:
+                raise
+            return False
 
+        if route == "1/get_completions_sync":
+            return llm_result
 
-# ──────────────────────────────────────────────────────────────────────────────
-# STEP 6: Patch _build_tool_call_response
-#
-# After a tool runs, Odoo appends the result to "inputs" for the next LLM call.
-# Format differs between providers:
-#
-# Responses API (OpenAI):
-#   { "type": "function_call_output", "call_id": "...", "output": "..." }
-#
-# Chat Completions:
-#   { "role": "tool", "tool_call_id": "...", "content": "..." }
-# ──────────────────────────────────────────────────────────────────────────────
+        if route == "1/get_completions":
+            request_uuid = params.get("request_uuid")
+            webhook_dbname = params.get("webhook_dbname") or dbname
+            if request_uuid and webhook_dbname:
+                try:
+                    registry = Registry(webhook_dbname)
+                    with registry.cursor() as cr:
+                        env = api.Environment(cr, odoo.SUPERUSER_ID, {})
+                        session = env["ai.session"].search([
+                            ("request_uuid", "=", request_uuid),
+                            ("loop_state", "=", "waiting_model"),
+                        ], limit=1)
+                        if session:
+                            session_env = session._get_completion_env()
+                            session.with_env(session_env)._process_completion_result(llm_result)
+                            cr.commit()
+                            _logger.info("ai_local: successfully resolved async session %s", request_uuid)
+                except Exception as e:
+                    _logger.exception("ai_local: error processing async session: %s", e)
+            return {"success": True}
 
-_orig_build_tool_call_response = LLMApiService._build_tool_call_response
+        return _orig_call_odoo_ai_transport(connection, route, params, timeout=timeout, raise_user_error=raise_user_error)
 
-def _patched_build_tool_call_response(self, tool_call_id, return_value):
-    if getattr(self, '_use_chat_completions', False):
-        return {
-            "role": "tool",
-            "tool_call_id": tool_call_id,
-            "content": str(return_value),
-        }
-    return _orig_build_tool_call_response(self, tool_call_id, return_value)
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Apply all patches to the LLMApiService class
-# ──────────────────────────────────────────────────────────────────────────────
-
-LLMApiService._request_llm_chat_completions = _request_llm_chat_completions
-LLMApiService._parse_chat_completions_response = _parse_chat_completions_response
-LLMApiService._build_tool_call_response = _patched_build_tool_call_response
-
-_logger.info("AI Local LLM patch loaded successfully.")
+    ai_utils.call_odoo_ai = _patched_call_odoo_ai
+    ai_utils.call_odoo_ai_transport = _patched_call_odoo_ai_transport
+    _logger.info("ai_local: successfully patched Odoo 20 AI transport methods")

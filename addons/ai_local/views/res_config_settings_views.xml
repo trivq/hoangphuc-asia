@@ -1,30 +1,33 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.ai.local</field>
         <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="ai_app.res_config_settings_view_form"/>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//block[@name='ai_providers']" position="inside">
-                <setting id="local_ai_provider" string="Use Local LLM (Ollama, vLLM, etc.)" help="Redirect OpenAI requests to a local compatible API server" groups="base.group_system">
-                    <field name="local_ai_enabled"/>
-                    <group invisible="not local_ai_enabled">
-                        <div class="flex-grow-1">
-                            <div class="mt-2">
-                                <label for="local_base_url" string="Base URL"/>
-                                <field name="local_base_url"  required="local_ai_enabled" class="w-100"/>
+            <xpath expr="//form" position="inside">
+                <app data-string="AI Local" string="AI Local" name="ai_local" groups="base.group_system">
+                    <block title="Local LLM Configuration (Ollama, vLLM, LM Studio)">
+                        <setting id="local_ai_provider" string="Use Local LLM" help="Redirect Odoo AI requests to a local OpenAI-compatible API server (e.g. Ollama)">
+                            <field name="local_ai_enabled"/>
+                            <div invisible="not local_ai_enabled" class="content-group">
+                                <div class="mt16 row">
+                                    <label for="local_base_url" string="Base URL" class="col-lg-3 o_light_label"/>
+                                    <field name="local_base_url" placeholder="http://host.docker.internal:11434/v1" class="col-lg-9"/>
+                                </div>
+                                <div class="mt8 row">
+                                    <label for="local_api_key" string="API Key" class="col-lg-3 o_light_label"/>
+                                    <field name="local_api_key" password="True" placeholder="ollama (optional)" class="col-lg-9"/>
+                                </div>
+                                <div class="mt8 row">
+                                    <label for="local_model" string="Default Model" class="col-lg-3 o_light_label"/>
+                                    <field name="local_model" placeholder="llama3 or qwen2.5:7b" class="col-lg-9"/>
+                                </div>
                             </div>
-                            <div class="mt-2">
-                                <label for="local_api_key" string="API Key"/>
-                                <field name="local_api_key" password="True" class="w-100"/>
-                            </div>
-                            <div class="mt-2">
-                                <label for="local_model" string="Default Model"/>
-                                <field name="local_model" class="w-100"/>
-                            </div>
-                        </div>
-                    </group>
-                </setting>
+                        </setting>
+                    </block>
+                </app>
             </xpath>
         </field>
     </record>

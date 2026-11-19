@@ -1,21 +1,15 @@
-# See LICENSE file for full copyright and licensing details.
+# Part of SeaOps. See LICENSE file for full copyright and licensing details.
 {
     'name': 'AI — Local LLM',
     'version': '20.0.1.0.0',
     'author': 'Tri Vo',
-    'summary': 'Patch Odoo AI module to support OpenAI-compatible local LLMs',
+    'summary': 'Connect Odoo AI to Ollama, vLLM, LM Studio and OpenAI-compatible local LLMs',
     'description': """
-        Allows Odoo AI module to use any OpenAI-compatible local LLM server
-        (Ollama, vLLM, LM Studio, LiteLLM, etc.) by patching LLMApiService
-        to use /chat/completions instead of /responses.
-
-        Configuration (Settings > Technical > System Parameters):
-            ai.local_base_url  = http://localhost:11434/v1
-            ai.local_api_key   = ollama  (or any string if no auth needed)
-            ai.local_model     = llama3  (model name your server understands)
+        Enables Odoo 20 AI features to connect to local LLM servers (Ollama, vLLM, LM Studio, etc.)
+        or custom OpenAI-compatible endpoints without requiring Odoo IAP credits.
     """,
     'category': 'Technical',
-    'depends': ['ai', 'ai_agentic'],
+    'depends': ['base', 'ai'],
     'data': [
         'views/res_config_settings_views.xml',
     ],

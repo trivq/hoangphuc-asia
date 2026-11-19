@@ -16,7 +16,7 @@ class ResConfigSettings(models.TransientModel):
         super().set_values()
         # Tự động tính toán lại phân cấp phê duyệt cho các đơn hàng chưa chốt duyệt
         pending_orders = self.env['purchase.order'].search([
-            ('approval_state', 'in', ['draft', 'waiting_gm', 'waiting_chairman'])
+            ('state', 'in', ['draft', 'sent', 'waiting_gm', 'waiting_chairman'])
         ])
         if pending_orders:
             pending_orders._compute_approval_tier()

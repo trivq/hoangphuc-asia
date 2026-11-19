@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.ai.local</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="ai_app.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='ai_providers']" position="inside">
+                <setting id="local_ai_provider" string="Use Local LLM (Ollama, vLLM, etc.)" help="Redirect OpenAI requests to a local compatible API server" groups="base.group_system">
+                    <field name="local_ai_enabled"/>
+                    <group invisible="not local_ai_enabled">
+                        <div class="flex-grow-1">
+                            <div class="mt-2">
+                                <label for="local_base_url" string="Base URL"/>
+                                <field name="local_base_url"  required="local_ai_enabled" class="w-100"/>
+                            </div>
+                            <div class="mt-2">
+                                <label for="local_api_key" string="API Key"/>
+                                <field name="local_api_key" password="True" class="w-100"/>
+                            </div>
+                            <div class="mt-2">
+                                <label for="local_model" string="Default Model"/>
+                                <field name="local_model" class="w-100"/>
+                            </div>
+                        </div>
+                    </group>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

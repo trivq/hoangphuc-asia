@@ -15,11 +15,11 @@
                 <field name="approval_tier" invisible="1"/>
 
                 <!-- Nút TGĐ Phê Duyệt: Chỉ hiển thị khi state == waiting_gm VÀ user là TGĐ VÀ <= 20M -->
-                <button name="action_gm_approve" string="TGĐ Phê Duyệt" type="object" class="btn-success"
+                <button name="action_gm_approve" string="Phê Duyệt" type="object" class="btn-success"
                         invisible="not user_can_gm_approve or approval_tier != 'tier_1'"/>
 
                 <!-- Nút TGĐ Duyệt & Trình Chủ Tịch: Chỉ hiển thị khi state == waiting_gm VÀ user là TGĐ VÀ > 20M -->
-                <button name="action_gm_approve" string="TGĐ Duyệt &amp; Trình Chủ Tịch" type="object" class="btn-primary"
+                <button name="action_gm_approve" string="Duyệt &amp; Trình Chủ Tịch" type="object" class="btn-primary"
                         invisible="not user_can_gm_approve or approval_tier != 'tier_2'"/>
 
                 <!-- Nút Chủ Tịch HĐQT Phê Duyệt: Chỉ hiển thị khi state == waiting_chairman VÀ user là Chủ Tịch HĐQT -->

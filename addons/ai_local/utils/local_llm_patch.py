@@ -172,36 +172,59 @@ def _call_local_llm(base_url, api_key, model, messages, instructions, tools=None
     return _convert_openai_to_odoo_response(choices[0].get("message") or {})
 
 
+def _get_param_bool(icp, key):
+    """Compatibility getter for boolean parameters across Odoo versions."""
+    if hasattr(icp, "get_bool"):
+        return icp.get_bool(key)
+    if hasattr(icp, "get_param"):
+        val = icp.get_param(key)
+        return val in (True, "True", "true", "1", 1)
+    return False
+
+
+def _get_param_str(icp, key, default=""):
+    """Compatibility getter for string parameters across Odoo versions."""
+    if hasattr(icp, "get_str"):
+        return icp.get_str(key, default=default)
+    if hasattr(icp, "get_param"):
+        return icp.get_param(key, default) or default
+    return default
+
+
 def _get_local_config(env=None, dbname=None):
-    """Safely fetch local AI configuration parameters."""
-    try:
-        if env:
+    """Safely fetch local AI configuration parameters using Odoo 20 get_bool / get_str."""
+    if env:
+        try:
             ICP = env["ir.config_parameter"].sudo()
-            enabled = ICP.get_param("ai.local_ai_enabled")
+            enabled = _get_param_bool(ICP, "ai.local_ai_enabled")
+            base_url = _get_param_str(ICP, "ai.local_base_url")
+            _logger.info("ai_local: env check - enabled=%s, base_url=%s", enabled, base_url)
             if enabled:
                 return {
                     "enabled": True,
-                    "base_url": ICP.get_param("ai.local_base_url"),
-                    "api_key": ICP.get_param("ai.local_api_key"),
-                    "model": ICP.get_param("ai.local_model"),
+                    "base_url": base_url,
+                    "api_key": _get_param_str(ICP, "ai.local_api_key"),
+                    "model": _get_param_str(ICP, "ai.local_model"),
                 }
-    except Exception:
-        pass
+        except Exception as e:
+            _logger.warning("ai_local: error reading config from env: %s", e)
 
     try:
         from odoo.http import request
         if request and hasattr(request, "env") and request.env:
             ICP = request.env["ir.config_parameter"].sudo()
-            enabled = ICP.get_param("ai.local_ai_enabled")
+            enabled = _get_param_bool(ICP, "ai.local_ai_enabled")
+            base_url = _get_param_str(ICP, "ai.local_base_url")
+            _logger.info("ai_local: request.env check - enabled=%s, base_url=%s", enabled, base_url)
             if enabled:
                 return {
                     "enabled": True,
-                    "base_url": ICP.get_param("ai.local_base_url"),
-                    "api_key": ICP.get_param("ai.local_api_key"),
-                    "model": ICP.get_param("ai.local_model"),
+                    "base_url": base_url,
+                    "api_key": _get_param_str(ICP, "ai.local_api_key"),
+                    "model": _get_param_str(ICP, "ai.local_model"),
                 }
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning("ai_local: error reading config from request.env: %s", e)
 
     if dbname:
         try:
@@ -209,16 +232,18 @@ def _get_local_config(env=None, dbname=None):
             with registry.cursor() as cr:
                 env_local = api.Environment(cr, odoo.SUPERUSER_ID, {})
                 ICP = env_local["ir.config_parameter"].sudo()
-                enabled = ICP.get_param("ai.local_ai_enabled")
+                enabled = _get_param_bool(ICP, "ai.local_ai_enabled")
+                base_url = _get_param_str(ICP, "ai.local_base_url")
+                _logger.info("ai_local: dbname (%s) check - enabled=%s, base_url=%s", dbname, enabled, base_url)
                 if enabled:
                     return {
                         "enabled": True,
-                        "base_url": ICP.get_param("ai.local_base_url"),
-                        "api_key": ICP.get_param("ai.local_api_key"),
-                        "model": ICP.get_param("ai.local_model"),
+                        "base_url": base_url,
+                        "api_key": _get_param_str(ICP, "ai.local_api_key"),
+                        "model": _get_param_str(ICP, "ai.local_model"),
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.warning("ai_local: error reading config from dbname %s: %s", dbname, e)
 
     return {"enabled": False}
 
@@ -230,7 +255,7 @@ if ai_utils:
     def _patched_call_odoo_ai(env, route, params, add_iap_token=True, timeout=60):
         config = _get_local_config(env=env)
         if config.get("enabled") and config.get("base_url"):
-            _logger.info("ai_local: intercepting call_odoo_ai route '%s'", route)
+            _logger.info("ai_local: intercepting call_odoo_ai route '%s' via local LLM", route)
             try:
                 return _call_local_llm(
                     base_url=config["base_url"],
@@ -251,9 +276,10 @@ if ai_utils:
         config = _get_local_config(dbname=dbname)
 
         if not config.get("enabled") or not config.get("base_url"):
+            _logger.info("ai_local: local AI not enabled or no base_url, falling back to Odoo IAP")
             return _orig_call_odoo_ai_transport(connection, route, params, timeout=timeout, raise_user_error=raise_user_error)
 
-        _logger.info("ai_local: intercepting call_odoo_ai_transport route '%s'", route)
+        _logger.info("ai_local: intercepting call_odoo_ai_transport route '%s' via local LLM (%s)", route, config.get("base_url"))
         messages = params.get("messages") or []
         instructions = params.get("instructions") or ""
         tools = params.get("tools")
@@ -270,9 +296,25 @@ if ai_utils:
             )
         except Exception as e:
             _logger.exception("ai_local: local LLM request failed: %s", e)
-            if raise_user_error:
-                raise
-            return False
+            # If local LLM fails, notify the session directly with the error message instead of InsufficientCreditError
+            request_uuid = params.get("request_uuid")
+            webhook_dbname = params.get("webhook_dbname") or dbname
+            if request_uuid and webhook_dbname:
+                try:
+                    registry = Registry(webhook_dbname)
+                    with registry.cursor() as cr:
+                        env = api.Environment(cr, odoo.SUPERUSER_ID, {})
+                        session = env["ai.session"].search([
+                            ("request_uuid", "=", request_uuid),
+                            ("loop_state", "=", "waiting_model"),
+                        ], limit=1)
+                        if session:
+                            err_content = f"Lỗi kết nối Local LLM ({config.get('base_url')}): {e}"
+                            session._finish_exchange("failed", content=err_content)
+                            cr.commit()
+                except Exception as clean_err:
+                    _logger.exception("ai_local: failed to report local LLM error to session: %s", clean_err)
+            return {"success": False}
 
         if route == "1/get_completions_sync":
             return llm_result

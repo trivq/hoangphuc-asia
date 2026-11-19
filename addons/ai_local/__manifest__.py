@@ -1,7 +1,7 @@
 # Part of SeaOps. See LICENSE file for full copyright and licensing details.
 {
     'name': 'AI — Local LLM',
-    'version': '20.0.1.0.0',
+    'version': '20.0.1.0.1',
     'author': 'Tri Vo',
     'summary': 'Connect Odoo AI to Ollama, vLLM, LM Studio and OpenAI-compatible local LLMs',
     'description': """

@@ -5,6 +5,14 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <!-- Smart button xem lịch sử giao dịch ký quỹ -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_deposit_history" type="object" class="oe_stat_button" icon="fa-money"
+                        invisible="quarry_customer_type != 'prepaid'">
+                    <field name="deposit_history_count" widget="statinfo" string="Lịch Sử Ký Quỹ"/>
+                </button>
+            </xpath>
+
             <xpath expr="//notebook" position="inside">
                 <page string="Công Nợ Mỏ Đá" name="quarry_credit_tab">
                     <group>
@@ -13,13 +21,38 @@
                             <field name="quarry_payment_term_days" invisible="quarry_customer_type != 'credit'"/>
                         </group>
                         <group string="Hạn Mức &amp; Tiền Ký Quỹ">
-                            <field name="deposit_balance" invisible="quarry_customer_type != 'prepaid'"/>
+                            <label for="deposit_balance" string="Số Dư Ký Quỹ (VNĐ)" invisible="quarry_customer_type != 'prepaid'"/>
+                            <div class="o_row" invisible="quarry_customer_type != 'prepaid'">
+                                <field name="deposit_balance" class="oe_inline font-weight-bold"/>
+                                <button name="action_add_deposit" string="Nạp Tiền Ký Quỹ" type="object" class="btn btn-sm btn-primary ms-2"/>
+                            </div>
                             <field name="quarry_credit_limit" invisible="quarry_customer_type != 'credit'"/>
                             <field name="credit_status" widget="badge" 
                                    decoration-success="credit_status == 'good'" 
                                    decoration-warning="credit_status == 'warning'" 
                                    decoration-danger="credit_status == 'blocked'"/>
                         </group>
+                    </group>
+                    <!-- Danh sách lịch sử nạp/trừ tiền ký quỹ rút gọn -->
+                    <group string="Chi Tiết Lịch Sử Nạp / Trừ Tiền Ký Quỹ" invisible="quarry_customer_type != 'prepaid'">
+                        <field name="deposit_history_ids" nolabel="1" readonly="1">
+                            <list decoration-success="transaction_type == 'deposit'"
+                                  decoration-danger="transaction_type == 'deduct'"
+                                  decoration-warning="transaction_type == 'refund'">
+                                <field name="date" string="Thời Gian"/>
+                                <field name="name" string="Mã GD"/>
+                                <field name="transaction_type" widget="badge"
+                                       decoration-success="transaction_type == 'deposit'"
+                                       decoration-danger="transaction_type == 'deduct'"
+                                       decoration-warning="transaction_type == 'refund'"/>
+                                <field name="amount" decoration-bf="1"/>
+                                <field name="balance_after"/>
+                                <field name="payment_method"/>
+                                <field name="bank_ref" optional="hide"/>
+                                <field name="order_id" optional="hide"/>
+                                <field name="notes" optional="hide"/>
+                            </list>
+                        </field>
                     </group>
                 </page>
             </xpath>

@@ -5,11 +5,46 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
+            <!-- Cụm cảnh báo nổi bật ngay trước Sheet -->
+            <xpath expr="//sheet" position="before">
+                <field name="is_deposit_insufficient" invisible="1"/>
+                <field name="partner_quarry_type" invisible="1"/>
+
+                <!-- Banner đỏ: Chặn & cảnh báo khi số dư ký quỹ thấp hơn đơn hàng -->
+                <div class="alert alert-danger mb-0 p-3 d-flex justify-content-between align-items-center"
+                     role="alert"
+                     invisible="not is_deposit_insufficient or state in ('sale', 'cancel')">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-exclamation-triangle fa-2x text-danger me-3"/>
+                        <div>
+                            <h5 class="alert-heading mb-1 text-danger font-weight-bold">
+                                KHÔNG ĐỦ ĐIỀU KIỆN XÁC NHẬN ĐƠN HÀNG!
+                            </h5>
+                            <field name="credit_warning_msg" readonly="1" class="mb-0 font-weight-bold"/>
+                        </div>
+                    </div>
+                    <button name="action_quick_deposit"
+                            string="Nạp Tiền Ký Quỹ Ngay"
+                            type="object"
+                            class="btn btn-danger btn-sm text-nowrap ms-3"
+                            invisible="partner_quarry_type != 'prepaid'"/>
+                </div>
+
+                <!-- Banner vàng: Cảnh báo số dư ký quỹ sắp hết (< 10 triệu) khi đơn hàng vẫn đủ tiền -->
+                <div class="alert alert-warning mb-0 p-2 d-flex align-items-center"
+                     role="status"
+                     invisible="is_deposit_insufficient or not credit_warning_msg or state in ('sale', 'cancel')">
+                    <i class="fa fa-info-circle fa-lg text-warning me-2"/>
+                    <field name="credit_warning_msg" readonly="1" class="mb-0"/>
+                </div>
+            </xpath>
+
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="project_name" placeholder="Tên công trình / dự án nhận đá"/>
                 <field name="contract_ref" placeholder="Số hợp đồng mỏ đá"/>
                 <field name="quarry_uom_type"/>
-                <field name="credit_warning_msg" invisible="not credit_warning_msg" widget="badge" decoration-danger="1"/>
+                <field name="partner_deposit_balance" invisible="partner_quarry_type != 'prepaid'"/>
+                <field name="deposit_history_id" invisible="not deposit_history_id" readonly="1"/>
             </xpath>
         </field>
     </record>

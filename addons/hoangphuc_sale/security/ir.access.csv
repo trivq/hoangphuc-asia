@@ -1,0 +1,3 @@
+id,name,model_id,group_id/id,operation,domain
+access_customer_deposit_history_user,customer.deposit.history.user,customer.deposit.history,base.group_user,crud,
+access_customer_deposit_history_manager,customer.deposit.history.manager,customer.deposit.history,base.group_system,crud,

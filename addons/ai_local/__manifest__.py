@@ -1,7 +1,8 @@
 # See LICENSE file for full copyright and licensing details.
 {
     'name': 'AI — Local LLM',
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
+    'author': 'Tri Vo',
     'summary': 'Patch Odoo AI module to support OpenAI-compatible local LLMs',
     'description': """
         Allows Odoo AI module to use any OpenAI-compatible local LLM server
@@ -14,10 +15,11 @@
             ai.local_model     = llama3  (model name your server understands)
     """,
     'category': 'Technical',
-    'depends': ['ai', 'ai_app'],
+    'depends': ['ai', 'ai_agentic'],
     'data': [
         'views/res_config_settings_views.xml',
     ],
+    'installable': True,
     'auto_install': False,
     'license': 'OPL-1',
 }

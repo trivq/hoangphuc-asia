@@ -24,6 +24,9 @@
                                     <label for="local_model" string="Default Model" class="col-lg-3 o_light_label"/>
                                     <field name="local_model" placeholder="llama3 or qwen2.5:7b" class="col-lg-9"/>
                                 </div>
+                                <div class="mt16">
+                                    <button name="action_test_local_ai_connection" type="object" string="Kiểm tra kết nối (Test Connection)" class="btn btn-secondary" icon="fa-bolt"/>
+                                </div>
                             </div>
                         </setting>
                     </block>

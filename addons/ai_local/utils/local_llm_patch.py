@@ -106,9 +106,9 @@ def _convert_odoo_to_openai_messages(messages, instructions):
 def _convert_openai_to_odoo_response(choice_message):
     """Convert OpenAI message back into Odoo 20 AssistantMessage structure."""
     content_parts = []
-    text = choice_message.get("content")
+    text = choice_message.get("content") or choice_message.get("reasoning_content") or ""
     if text:
-        content_parts.append({"type": "text", "text": text})
+        content_parts.append({"type": "text", "text": str(text)})
 
     tool_calls = choice_message.get("tool_calls") or []
     for tc in tool_calls:

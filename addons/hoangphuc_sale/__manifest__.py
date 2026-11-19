@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Bán Hàng & Hạn Mức Công Nợ Mỏ Đá',
-    'version': '1.0.2',
+    'version': '1.0.3',
     'category': 'Sales/Quarry',
     'summary': 'Tích hợp Hợp đồng đá mỏ, theo dõi dự án công trình, kiểm soát hạn mức nợ và ký quỹ thời gian thực',
     'description': """
@@ -18,7 +18,6 @@ Mở rộng Ứng dụng Bán Hàng (Sale) cho Mỏ đá Hoàng Phúc:
    - Tự động hiển thị trạng thái tín dụng và cảnh báo khi khách hàng không đủ điều kiện xuất hàng.
     """,
     'author': 'Tri Vo - Paracel',
-    'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'sale_management', 'hoangphuc_stock'],
     'data': [
         'security/ir.access.csv',

@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Bán Hàng & Hạn Mức Công Nợ Mỏ Đá',
-    'version': '1.0.1',
+    'version': '1.0.2',
     'category': 'Sales/Quarry',
     'summary': 'Tích hợp Hợp đồng đá mỏ, theo dõi dự án công trình, kiểm soát hạn mức nợ và ký quỹ thời gian thực',
     'description': """

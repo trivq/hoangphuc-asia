@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Bán Hàng & Hạn Mức Công Nợ Mỏ Đá',
-    'version': '1.0.0',
+    'version': '1.0.3',
     'category': 'Sales/Quarry',
     'summary': 'Tích hợp Hợp đồng đá mỏ, theo dõi dự án công trình, kiểm soát hạn mức nợ và ký quỹ thời gian thực',
     'description': """
@@ -13,16 +13,18 @@ Mở rộng Ứng dụng Bán Hàng (Sale) cho Mỏ đá Hoàng Phúc:
 2. Kiểm soát Hạn Mức Tín Dụng & Tiền Gửi Ký Quỹ (res.partner & sale.order):
    - Phân loại khách hàng: Trả trước (Ký quỹ tiền cọc) vs Công nợ có hạn mức.
    - Quản lý số dư tiền cọc ký quỹ (deposit_balance).
+   - Quản lý lịch sử nạp tiền (kèm sao kê/phiếu thu) và trừ tiền khi xuất đá.
    - Quản lý hạn mức tín dụng tối đa (quarry_credit_limit).
    - Tự động hiển thị trạng thái tín dụng và cảnh báo khi khách hàng không đủ điều kiện xuất hàng.
     """,
     'author': 'Tri Vo - Paracel',
-    'website': 'https://hoangphucstone.vn',
     'depends': ['base', 'sale_management', 'hoangphuc_stock'],
     'data': [
+        'security/ir.access.csv',
+        'data/ir_sequence_data.xml',
+        'views/customer_deposit_history_views.xml',
         'views/partner_views.xml',
         'views/sale_order_views.xml',
-        'views/stock_picking_views.xml',
     ],
     'installable': True,
     'application': False,

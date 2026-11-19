@@ -1,6 +1,6 @@
 {
     'name': 'Hoàng Phúc - Mua Hàng & Phê Duyệt Vật Tư Mỏ',
-    'version': '1.0.0',
+    'version': '1.0.2',
     'category': 'Purchases/Quarry',
     'summary': 'Gắn đích danh thiết bị chịu chi phí, quy tắc 3 báo giá, phân cấp duyệt <=20M TGĐ và >20M Chủ tịch HĐQT, nghiệm thu hiện trường',
     'description': """
@@ -23,8 +23,10 @@ Mở rộng Ứng dụng Mua Hàng (Purchase) cho Mỏ đá Hoàng Phúc:
     'depends': ['base', 'purchase', 'maintenance'],
     'data': [
         'data/ir_config_parameter_data.xml',
+        'data/ir_filters_data.xml',
         'views/purchase_order_views.xml',
         'views/res_config_settings_views.xml',
+        'views/res_users_views.xml',
     ],
     'installable': True,
     'application': False,

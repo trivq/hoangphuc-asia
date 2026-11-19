@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_mrp_hoangphuc" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.mrp.hoangphuc</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="hoangphuc_stock.view_picking_form_inherit_hoangphuc"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='crushing_plant']" position="after">
+                <field name="mrp_production_id" options="{'no_create': True}" placeholder="Chọn Lệnh sản xuất đang chạy (nếu có)..."/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -5,26 +5,40 @@
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
-            <!-- Thêm các nút quy trình duyệt phân cấp tài chính BR-03 -->
+            <!-- 1. Thêm các nút phê duyệt chỉ hiển thị ở role tương ứng -->
             <xpath expr="//header" position="inside">
-                <button name="action_submit_for_approval" string="Trình Phê Duyệt" type="object" class="btn-primary" invisible="approval_state != 'draft'"/>
-                <button name="action_gm_approve" string="TGĐ Phê Duyệt" type="object" class="btn-success" invisible="approval_state != 'waiting_gm'"/>
-                <button name="action_chairman_approve" string="Chủ Tịch HĐQT Phê Duyệt" type="object" class="btn-success" invisible="approval_state != 'waiting_chairman'"/>
-                <button name="action_reject" string="Từ Chối" type="object" class="btn-danger" invisible="approval_state not in ['waiting_gm', 'waiting_chairman']"/>
-                <button name="action_reset_draft" string="Làm Lại Nháp" type="object" class="btn-secondary" invisible="approval_state != 'rejected'"/>
+                <field name="user_is_gm" invisible="1"/>
+                <field name="user_is_chairman" invisible="1"/>
+                <field name="user_can_gm_approve" invisible="1"/>
+                <field name="user_can_chairman_approve" invisible="1"/>
+                <field name="user_can_reject" invisible="1"/>
+                <field name="approval_tier" invisible="1"/>
+
+                <!-- Nút TGĐ Phê Duyệt: Chỉ hiển thị khi state == waiting_gm VÀ user là TGĐ VÀ <= 20M -->
+                <button name="action_gm_approve" string="Phê Duyệt" type="object" class="btn-success"
+                        invisible="not user_can_gm_approve or approval_tier != 'tier_1'"/>
+
+                <!-- Nút TGĐ Duyệt & Trình Chủ Tịch: Chỉ hiển thị khi state == waiting_gm VÀ user là TGĐ VÀ > 20M -->
+                <button name="action_gm_approve" string="Duyệt &amp; Trình Chủ Tịch" type="object" class="btn-primary"
+                        invisible="not user_can_gm_approve or approval_tier != 'tier_2'"/>
+
+                <!-- Nút Chủ Tịch HĐQT Phê Duyệt: Chỉ hiển thị khi state == waiting_chairman VÀ user là Chủ Tịch HĐQT -->
+                <button name="action_chairman_approve" string="Phê Duyệt" type="object" class="btn-success"
+                        invisible="not user_can_chairman_approve"/>
+
+                <!-- Nút Từ chối: Chỉ cấp thẩm quyền tương ứng mới thấy khi ở state chờ duyệt -->
+                <button name="action_reject_to_draft" string="Từ chối" type="object" class="btn-warning"
+                        invisible="not user_can_reject"/>
+            </xpath>
+
+            <!-- 3. Cho phép Hủy đơn ở cả các trạng thái chờ duyệt -->
+            <xpath expr="//button[@name='button_cancel']" position="attributes">
+                <attribute name="invisible">state not in ('draft', 'to approve', 'sent', 'purchase', 'waiting_gm', 'waiting_chairman') or locked</attribute>
             </xpath>
 
             <!-- Thêm trường thiết bị mỏ chịu chi phí BR-10 sau partner_id -->
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="equipment_id" placeholder="Chọn thiết bị / xe máy mỏ chịu chi phí"/>
-                <field name="approval_tier" widget="badge" 
-                       decoration-info="approval_tier == 'tier_1'" 
-                       decoration-warning="approval_tier == 'tier_2'"/>
-                <field name="approval_state" widget="badge" 
-                       decoration-muted="approval_state == 'draft'" 
-                       decoration-warning="approval_state in ['waiting_gm', 'waiting_chairman']" 
-                       decoration-success="approval_state == 'approved'" 
-                       decoration-danger="approval_state == 'rejected'"/>
                 <field name="supplier_payment_term_type"/>
             </xpath>
 
@@ -76,10 +90,44 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="equipment_id" optional="show"/>
-                <field name="approval_state" widget="badge" optional="show"
-                       decoration-warning="approval_state in ['waiting_gm', 'waiting_chairman']"
-                       decoration-success="approval_state == 'approved'"/>
             </xpath>
         </field>
     </record>
+
+    <!-- Kế thừa Search View của Purchase Order để thêm bộ lọc trạng thái Chờ TGĐ & Chờ CT HĐQT duyệt -->
+    <record id="purchase_order_view_search_inherit_hoangphuc" model="ir.ui.view">
+        <field name="name">purchase.order.search.inherit.hoangphuc</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='waiting_rfqs']" position="after">
+                <separator/>
+                <filter name="filter_need_my_approval" string="Cần Phê Duyệt" domain="[('need_my_approval', '=', True)]"/>
+                <filter name="filter_waiting_gm" string="Chờ TGĐ Phê Duyệt" domain="[('state', '=', 'waiting_gm')]"/>
+                <filter name="filter_waiting_chairman" string="Chờ Chủ Tịch HĐQT Phê Duyệt" domain="[('state', '=', 'waiting_chairman')]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Cửa sổ hành động (Action) dành riêng cho các đơn hàng cần cấp thẩm quyền phê duyệt -->
+    <record id="action_purchase_order_to_approve" model="ir.actions.act_window">
+        <field name="name">Đơn Hàng Chờ Phê Duyệt</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,kanban,form,pivot,graph,calendar,activity</field>
+        <field name="domain">[('need_my_approval', '=', True)]</field>
+        <field name="search_view_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Không có đơn hàng nào đang chờ bạn phê duyệt!
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Chờ Phê Duyệt: Hiển thị ngay dưới Mua Hàng / Đơn Hàng -->
+    <menuitem id="menu_purchase_order_to_approve"
+              name="Chờ Phê Duyệt"
+              parent="purchase.menu_procurement_management"
+              action="action_purchase_order_to_approve"
+              sequence="3"/>
 </odoo>

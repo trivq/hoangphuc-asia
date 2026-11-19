@@ -1,6 +1,5 @@
 import odoo
 from odoo import api, fields, SUPERUSER_ID
-import datetime
 
 def populate_demo_data(cr):
     env = api.Environment(cr, SUPERUSER_ID, {})
@@ -1111,8 +1110,6 @@ def populate_demo_data(cr):
             'current_meter': 2110.0,
             'fuel_liters': 245.0,
             'fuel_station': 'Xe Bồn Cấp Dầu Lưu Động Bãi Moong',
-            'technical_explanation': 'Đường vận chuyển từ moong sâu lên bãi sàng bị sình lầy do mưa đêm, xe phải gài 2 cầu chạy số 1 liên tục làm tăng tiêu hao nhiên liệu (BR-08).',
-        })
     # -------------------------------------------------------------
     # 13. SẢN XUẤT TRỰC TIẾP MỎ ĐÁ & TRẠM NGHIỀN SÀNG (MRP / SXTT)
     # -------------------------------------------------------------
@@ -1171,13 +1168,9 @@ def populate_demo_data(cr):
             'raw_stone_input_qty': 330.0,
             'quarry_stock_yard': 'Bãi Thành Phẩm Đá 1x2 - Moong Chính Cạnh Trạm Cân Số 1',
             'operating_hours': 7.5,
-            'downtime_ids': [(0, 0, {
-                'date_start': fields.Datetime.now() - datetime.timedelta(hours=4),
-                'date_end': fields.Datetime.now() - datetime.timedelta(hours=3, minutes=35),
-                'duration_minutes': 25,
-                'cause': 'jam',
-                'explanation': 'Đá tảng quá cỡ >800mm từ xe Howo đổ vào làm kẹt miệng hàm nghiền sơ cấp C106. Kíp vận hành đã ngắt điện an toàn, dùng búa đập vỡ đá tảng và thông phễu cấp liệu mất 25 phút (BR-04).',
-            })],
+            'downtime_minutes': 25,
+            'downtime_cause': 'jam',
+            'downtime_explanation': 'Đá tảng quá cỡ >800mm từ xe Howo đổ vào làm kẹt miệng hàm nghiền sơ cấp C106. Kíp vận hành đã ngắt điện an toàn, dùng búa đập vỡ đá tảng và thông phễu cấp liệu mất 25 phút (BR-04).',
         })
         mo1.action_confirm()
         mo1.qty_producing = 300.0
@@ -1202,13 +1195,10 @@ def populate_demo_data(cr):
             'raw_stone_input_qty': 220.0,
             'quarry_stock_yard': 'Bãi Thành Phẩm Đá 1x2 - Moong Chính Cạnh Trạm Cân Số 1',
             'operating_hours': 4.0,
+            'downtime_minutes': 0,
+            'downtime_cause': 'none',
         })
         mo2.action_confirm()
-
-    # Đồng bộ / cập nhật phiếu nhập kho bãi thành phẩm cho các lệnh sản xuất
-    for mo in (existing_mo1 or mo1) | (existing_mo2 or mo2):
-        if hasattr(mo, '_create_or_update_finished_picking'):
-            mo._create_or_update_finished_picking()
 
     print("SUCCESS: Hoang Phuc demo data (Warehouses, VLNCN Lots, Quants, Equipment Spare Parts, MRP Crushing) populated successfully!")
 

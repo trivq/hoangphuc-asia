@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_customer_deposit_history" model="ir.sequence">
+            <field name="name">Lịch Sử Ký Quỹ Mỏ Đá</field>
+            <field name="code">customer.deposit.history</field>
+            <field name="prefix">KQ/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

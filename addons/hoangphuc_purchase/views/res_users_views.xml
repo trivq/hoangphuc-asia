@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_inherit_hoangphuc_purchase" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.hoangphuc.purchase</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='access_rights']" position="inside">
+                <group string="Thẩm Quyền Phê Duyệt Mua Sắm Mỏ (BR-03)" groups="base.group_erp_manager">
+                    <field name="is_general_manager" widget="boolean_toggle"/>
+                    <field name="is_board_chairman" widget="boolean_toggle"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

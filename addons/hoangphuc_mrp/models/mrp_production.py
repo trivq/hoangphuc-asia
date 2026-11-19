@@ -60,24 +60,26 @@ class MrpProduction(models.Model):
         help='Tổng số giờ chạy máy có tải trong ca.'
     )
 
-    downtime_ids = fields.One2many(
-        'mrp.production.downtime',
-        'production_id',
-        string='Nhật Ký Dừng Máy'
-    )
-
     downtime_minutes = fields.Integer(
-        string='Tổng Thời Gian Dừng Máy (Phút)',
-        compute='_compute_downtime_minutes',
-        store=True,
+        string='Thời Gian Dừng Máy (Phút)',
+        default=0,
         tracking=True,
-        help='Tổng thời gian dừng máy phát sinh trong ca từ các lượt dừng máy.'
+        help='Tổng thời gian dừng máy phát sinh trong ca.'
     )
 
-    @api.depends('downtime_ids.duration_minutes')
-    def _compute_downtime_minutes(self):
-        for mo in self:
-            mo.downtime_minutes = sum(mo.downtime_ids.mapped('duration_minutes'))
+    downtime_cause = fields.Selection([
+        ('none', 'Không Dừng Máy (Bình Thường)'),
+        ('jam', 'Tắc Phễu / Kẹt Đá Quá Cỡ'),
+        ('electrical', 'Sự Cố Điện / Mất Điện Lưới'),
+        ('mechanical', 'Sự Cố Cơ Khí / Rách Băng Tải / Kẹt Sàng'),
+        ('weather', 'Mưa Lớn / Thời Tiết Mất An Toàn'),
+        ('maintenance', 'Bảo Dưỡng Định Kỳ Đầu Ca'),
+    ], string='Nguyên Nhân Dừng Máy (BR-04)', default='none', tracking=True)
+
+    downtime_explanation = fields.Text(
+        string='Giải Trình Sự Cố Dừng Máy',
+        help='Bắt buộc nhập giải trình kỹ thuật nếu thời gian dừng máy >= 10 phút (BR-04).'
+    )
 
     quarry_stock_yard = fields.Char(
         string='Vị Trí Bãi Tập Kết Thành Phẩm',
@@ -85,114 +87,396 @@ class MrpProduction(models.Model):
         help='Bãi tập kết thành phẩm đá sau khi qua hệ thống băng tải sàng phân loại (Luồng 4.5).'
     )
 
-    @api.depends('state', 'move_finished_ids.picking_id')
-    def _compute_picking_ids(self):
-        super()._compute_picking_ids()
-        for order in self:
-            extra_pickings = self.env['stock.picking'].search([
-                '|',
-                ('origin', '=', order.name),
-                ('id', 'in', (order.move_finished_ids.picking_id | order.move_raw_ids.picking_id).ids),
-            ])
-            all_pickings = (order.picking_ids or self.env['stock.picking']) | extra_pickings
-            order.picking_ids = all_pickings
-            order.delivery_count = len(all_pickings)
+    # Quản lý các chuyến xe cân và lệnh chuyển kho nhập bãi thành phẩm trong ca
+    finished_picking_ids = fields.One2many(
+        'stock.picking',
+        'mrp_production_id',
+        string='Phiếu Cân Thành Phẩm',
+        help='Danh sách các phiếu cân xe và lệnh chuyển kho nhập bãi thành phẩm trong ca.'
+    )
+    finished_move_ids = fields.One2many(
+        'stock.move',
+        'quarry_production_id',
+        string='Dịch Chuyển Thành Phẩm Nhập Bãi',
+        help='Chi tiết các dòng dịch chuyển đá thành phẩm theo từng chuyến xe cân.'
+    )
+    finished_trips_count = fields.Integer(
+        string='Số Chuyến Xe Thành Phẩm',
+        compute='_compute_finished_stats',
+        store=True,
+        help='Tổng số chuyến xe ben chở đá thành phẩm ra bãi tập kết trong ca.'
+    )
+    finished_stone_total_qty = fields.Float(
+        string='Tổng Thành Phẩm Đã Nhập Bãi (Tấn)',
+        digits=(12, 2),
+        compute='_compute_finished_stats',
+        store=True,
+        help='Tổng khối lượng đá thành phẩm thực tế đã cân và nhập bãi.'
+    )
 
-    def _create_or_update_finished_picking(self):
-        """Tự động tạo hoặc liên kết Phiếu Nhập Kho Bãi Thành Phẩm (Receipt) cho MO."""
-        Picking = self.env['stock.picking']
+    @api.depends(
+        'finished_picking_ids', 'finished_picking_ids.state',
+        'finished_move_ids', 'finished_move_ids.state', 'finished_move_ids.quantity'
+    )
+    def _compute_finished_stats(self):
         for mo in self:
-            if not mo.move_finished_ids:
-                continue
-            # Tìm phiếu kho thành phẩm đã liên kết
-            picking = mo.picking_ids.filtered(
-                lambda p: p.location_dest_id == mo.location_dest_id or p.picking_type_id.code in ('incoming', 'internal')
-            )
-            qty_val = mo.qty_producing or mo.product_qty or 0.0
-            net_kg = qty_val * 1000.0
-            density_val = mo.product_id.density if hasattr(mo.product_id, 'density') and mo.product_id.density else 1.6
-            vol = round((net_kg / 1000.0) / density_val, 2) if density_val > 0 else 0.0
+            # Chỉ đếm và cộng dồn các chuyến xe và phiếu chuyển kho đã HOÀN TẤT nhập bãi (state == 'done')
+            done_pickings = mo.finished_picking_ids.filtered(lambda p: p.state == 'done')
+            mo.finished_trips_count = len(done_pickings)
+            done_moves = mo.finished_move_ids.filtered(lambda m: m.state == 'done')
+            mo.finished_stone_total_qty = sum(done_moves.mapped('quantity'))
 
-            if not picking:
-                warehouse = mo.picking_type_id.warehouse_id or self.env['stock.warehouse'].search([('company_id', '=', mo.company_id.id)], limit=1)
-                picking_type = warehouse.in_type_id or mo.picking_type_id
-                vals = {
-                    'picking_type_id': picking_type.id,
-                    'origin': mo.name,
-                    'location_id': mo.production_location_id.id,
-                    'location_dest_id': mo.location_dest_id.id,
-                    'company_id': mo.company_id.id,
-                    'crushing_plant': mo.crushing_plant,
-                    'driver_name': mo.operator_name,
-                    'is_scale_picking': True,
-                    'net_weight': net_kg,
-                    'density': density_val,
-                    'volume_m3': vol,
-                }
-                picking = Picking.create(vals)
-            else:
-                picking.write({
-                    'net_weight': net_kg,
-                    'volume_m3': vol,
-                })
+    quarry_picking_count = fields.Integer(
+        string='Số Phiếu Chuyển Kho',
+        compute='_compute_quarry_picking_count',
+        help='Tổng số phiếu chuyển kho (cấp liệu, bổ sung hoặc trả hàng) liên quan đến lệnh sản xuất này.'
+    )
 
-            # Gắn các moves finished và move_lines vào picking
-            moves_to_link = mo.move_finished_ids.filtered(lambda m: not m.picking_id)
-            if moves_to_link:
-                moves_to_link.write({'picking_id': picking.id})
-                if moves_to_link.move_line_ids:
-                    moves_to_link.move_line_ids.filtered(lambda ml: not ml.picking_id).write({'picking_id': picking.id})
+    def _compute_quarry_picking_count(self):
+        for mo in self:
+            mo.quarry_picking_count = len(mo._get_related_component_pickings())
 
-    def action_view_mo_delivery(self):
-        """Mở danh sách phiếu nhập kho của MO, tự động khởi tạo nếu chưa có."""
+    def _get_quarry_raw_stone_move(self):
+        """Xác định chính xác dòng nguyên liệu đá thô trong tab Nguyên Liệu (move_raw_ids)."""
         self.ensure_one()
-        if not self.picking_ids and self.move_finished_ids:
-            self._create_or_update_finished_picking()
-        return super().action_view_mo_delivery()
+        if not self.move_raw_ids:
+            return self.env['stock.move']
+
+        # 1. Ưu tiên sản phẩm có đánh dấu đá mỏ (is_quarry_stone)
+        stone_moves = self.move_raw_ids.filtered(
+            lambda m: getattr(m.product_id, 'is_quarry_stone', False)
+        )
+        if stone_moves:
+            return stone_moves[0]
+
+        # 2. Tìm theo từ khóa đặc trưng của đá thô / đá hộc khai thác
+        raw_keywords = ['đá hộc', 'đá thô', 'nguyên khai', 'đá mỏ', 'boulder', 'raw']
+        for kw in raw_keywords:
+            matched = self.move_raw_ids.filtered(
+                lambda m: kw in (m.product_id.name or '').lower() or
+                          (m.product_id.categ_id and kw in (m.product_id.categ_id.name or '').lower())
+            )
+            if matched:
+                return matched[0]
+
+        # 3. Fallback: Dòng nguyên liệu đầu tiên
+        return self.move_raw_ids[0]
+
+    def _get_related_component_pickings(self, target_raw_move=None):
+        """Tìm toàn bộ các phiếu chuyển kho (stock.picking) liên quan đến việc cấp liệu cho MO này."""
+        self.ensure_one()
+        pickings = self.env['stock.picking']
+
+        # A. Lấy từ picking_ids có sẵn của MO (native Odoo 20)
+        if hasattr(self, 'picking_ids') and self.picking_ids:
+            pickings |= self.picking_ids
+
+        # B. Tìm qua chuỗi cung ứng move_orig_ids của dòng nguyên liệu
+        if target_raw_move and target_raw_move.move_orig_ids:
+            pickings |= target_raw_move.move_orig_ids.picking_id
+        elif self.move_raw_ids.move_orig_ids:
+            pickings |= self.move_raw_ids.move_orig_ids.picking_id
+
+        # C. Tìm qua picking_id trực tiếp trên move_raw_ids / move_finished_ids nếu có
+        if hasattr(self.move_raw_ids, 'picking_id'):
+            pickings |= self.move_raw_ids.picking_id
+        if hasattr(self.move_finished_ids, 'picking_id'):
+            pickings |= self.move_finished_ids.picking_id
+
+        # D. Tìm qua trường origin gắn mã MO
+        if self.name:
+            pickings |= self.env['stock.picking'].search([
+                ('origin', 'ilike', self.name)
+            ])
+
+        return pickings.filtered(lambda p: p.state != 'cancel')
+
+    def _create_extra_component_picking(self, target_raw_move, qty, ref_picking):
+        """Tự động tạo phiếu chuyển hàng BỔ SUNG khi thực tế nhiều hơn ban đầu (+ delta)."""
+        self.ensure_one()
+        prod = target_raw_move.product_id
+
+        picking_vals = {
+            'picking_type_id': ref_picking.picking_type_id.id,
+            'location_id': ref_picking.location_id.id,
+            'location_dest_id': ref_picking.location_dest_id.id,
+            'origin': _('%s: Cấp bổ sung đá thô (+%s Tấn)') % (self.name, round(qty, 2)),
+            'move_ids': [
+                (0, 0, {
+                    'description_picking': _('Cấp bổ sung %s cho %s') % (prod.display_name, self.name),
+                    'product_id': prod.id,
+                    'product_uom_qty': qty,
+                    'quantity': qty,
+                    'uom_id': prod.uom_id.id,
+                    'location_id': ref_picking.location_id.id,
+                    'location_dest_id': ref_picking.location_dest_id.id,
+                    'origin': self.name,
+                    'production_group_id': self.production_group_id.id if hasattr(self, 'production_group_id') and self.production_group_id else False,
+                    'move_dest_ids': [(4, target_raw_move.id)],
+                })
+            ]
+        }
+        new_picking = self.env['stock.picking'].create(picking_vals)
+        new_picking.action_confirm()
+        new_picking.action_assign()
+        return new_picking
+
+    def _create_return_component_picking(self, target_raw_move, qty, ref_picking):
+        """Tự động tạo phiếu TRẢ HÀNG THỪA về bãi kho khi thực tế ít hơn ban đầu (- delta)."""
+        self.ensure_one()
+        prod = target_raw_move.product_id
+        wh = ref_picking.picking_type_id.warehouse_id
+        # Sử dụng loại hoạt động điều chuyển nội bộ của kho nếu có
+        picking_type = wh.int_type_id if wh and wh.int_type_id else ref_picking.picking_type_id
+
+        picking_vals = {
+            'picking_type_id': picking_type.id,
+            'location_id': ref_picking.location_dest_id.id,  # Từ trạm nghiền / pre-production
+            'location_dest_id': ref_picking.location_id.id,    # Trả về bãi kho chính / stock
+            'origin': _('%s: Trả đá thô thừa về bãi kho (-%s Tấn)') % (self.name, round(qty, 2)),
+            'move_ids': [
+                (0, 0, {
+                    'description_picking': _('Hoàn trả đá thô thừa %s từ %s') % (prod.display_name, self.name),
+                    'product_id': prod.id,
+                    'product_uom_qty': qty,
+                    'quantity': qty,
+                    'uom_id': prod.uom_id.id,
+                    'location_id': ref_picking.location_dest_id.id,
+                    'location_dest_id': ref_picking.location_id.id,
+                    'origin': self.name,
+                    'production_group_id': self.production_group_id.id if hasattr(self, 'production_group_id') and self.production_group_id else False,
+                })
+            ]
+        }
+        return_picking = self.env['stock.picking'].create(picking_vals)
+        return_picking.action_confirm()
+        return_picking.action_assign()
+        return return_picking
+
+    def action_view_related_pickings(self):
+        """Mở danh sách các lệnh chuyển hàng liên quan đến lệnh sản xuất này."""
+        self.ensure_one()
+        pickings = self._get_related_component_pickings()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        if len(pickings) == 1:
+            action['views'] = [(self.env.ref('stock.view_picking_form').id, 'form')]
+            action['res_id'] = pickings.id
+        else:
+            action['domain'] = [('id', 'in', pickings.ids)]
+        action['context'] = {'default_origin': self.name}
+        return action
+
+    def action_view_finished_pickings(self):
+        """Mở danh sách các phiếu cân thành phẩm của MO này."""
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        action['name'] = _('Phiếu Cân Thành Phẩm: %s') % self.name
+        action['domain'] = [('id', 'in', self.finished_picking_ids.ids)]
+        action['context'] = {
+            'default_mrp_production_id': self.id,
+            'default_origin': self.name,
+        }
+        return action
+
+    def action_create_finished_picking(self):
+        """Tạo phiếu nhập kho thành phẩm mới cho chuyến xe ben hiện tại:
+        - Tự động điền loại thành phẩm trong MO.
+        - Gắn vị trí nguồn sau sản xuất của trạm nghiền đến bãi tập kết đá.
+        - Khởi tạo thông tin trạm cân để người quản lý/nhân viên trạm cân chỉ cần nhập BKS và cân xe.
+        """
+        self.ensure_one()
+        wh = self.picking_type_id.warehouse_id
+        # Ưu tiên lấy SAM type (Store After Manufacturing)
+        picking_type = wh.sam_type_id if wh and wh.sam_type_id else False
+        if not picking_type:
+            # Fallback lấy picking type nhập kho / điều chuyển nội bộ của kho thành phẩm đá
+            picking_type = self.env['stock.picking.type'].search([
+                ('warehouse_id', '=', wh.id if wh else False),
+                ('code', 'in', ('internal', 'incoming')),
+                ('picking_category', '=', 'stone'),
+            ], limit=1)
+        if not picking_type:
+            picking_type = self.picking_type_id
+
+        # Xác định vị trí nguồn (Trạm nghiền / Sau sản xuất)
+        src_loc = picking_type.default_location_src_id or (wh.sam_loc_id if wh else False) or self.location_src_id
+        # Xác định vị trí đích: Luôn ưu tiên vị trí thành phẩm được cấu hình trên Lệnh sản xuất (self.location_dest_id)
+        dest_loc = self.location_dest_id or picking_type.default_location_dest_id or (wh.lot_stock_id if wh else False)
+
+        # Mặc định sản phẩm thành phẩm từ MO
+        prod = self.product_id
+
+        move_vals = [{
+            'description_picking': _('Nhập bãi %s từ Lệnh %s') % (prod.display_name, self.name),
+            'product_id': prod.id,
+            'product_uom_qty': 0.0,
+            'quantity': 0.0,
+            'uom_id': prod.uom_id.id,
+            'location_id': src_loc.id,
+            'location_dest_id': dest_loc.id,
+            'origin': self.name,
+            'production_group_id': self.production_group_id.id if self.production_group_id else False,
+        }]
+
+        picking_vals = {
+            'picking_type_id': picking_type.id,
+            'location_id': src_loc.id,
+            'location_dest_id': dest_loc.id,
+            'origin': _('%s: Chuyến Thành Phẩm') % self.name,
+            'mrp_production_id': self.id,
+            'weigh_time': fields.Datetime.now(),
+            'crushing_plant': self.crushing_plant,
+            'density': getattr(prod, 'density', 1.6) or 1.6,
+            'move_ids': [(0, 0, mv) for mv in move_vals],
+        }
+
+        new_picking = self.env['stock.picking'].create(picking_vals)
+
+        return {
+            'name': _('Phiếu Cân Nhập Bãi Thành Phẩm Đá'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.picking',
+            'res_id': new_picking.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
 
     def action_confirm(self):
         """Kiểm tra quy tắc an toàn BR-02 trước khi xác nhận phát lệnh sản xuất."""
         for mo in self:
             if not mo.safety_checked:
                 raise UserError(_('CẢNH BÁO BR-02: Điều kiện an toàn đầu ca chưa được xác nhận! Nghiêm cấm phát lệnh vận hành trạm nghiền.'))
-        res = super().action_confirm()
-        for mo in self:
-            mo._create_or_update_finished_picking()
-        return res
+        return super().action_confirm()
 
     def button_mark_done(self):
-        """Kiểm tra giải trình dừng máy BR-04 trước khi hoàn tất lệnh sản xuất."""
+        """Kiểm tra giải trình dừng máy BR-04 và đồng bộ sản lượng từ các chuyến xe thành phẩm."""
         for mo in self:
-            missing_explanation = mo.downtime_ids.filtered(
-                lambda d: d.duration_minutes >= 10 and not (d.explanation or '').strip()
-            )
-            if missing_explanation:
-                raise UserError(_(
-                    'CẢNH BÁO BR-04: Có %s lượt dừng máy từ 10 phút trở lên chưa có giải trình kỹ thuật! '
-                    'Bắt buộc nhập đầy đủ giải trình sự cố dừng máy trước khi chốt sản xuất!'
-                ) % len(missing_explanation))
             if mo.downtime_minutes >= 10 and not (mo.downtime_explanation or '').strip():
                 raise UserError(_('CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (%s phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!') % mo.downtime_minutes)
+
+            # Đồng bộ sản lượng hoàn thành trên MO theo tổng các phiếu cân thực tế nếu chưa chốt
+            if mo.finished_stone_total_qty > 0 and mo.qty_producing == 0:
+                mo.qty_producing = mo.finished_stone_total_qty
+
+        res = super().button_mark_done()
+
+        # Dọn dẹp/hủy phiếu SAM tự động gộp nếu toàn bộ hàng đã được nhập theo từng chuyến xe lẻ
         for mo in self:
-            mo._create_or_update_finished_picking()
-        return super().button_mark_done()
+            if mo.finished_picking_ids:
+                auto_sam_pickings = mo.picking_ids.filtered(
+                    lambda p: p.picking_type_id == mo.picking_type_id.warehouse_id.sam_type_id
+                    and p.id not in mo.finished_picking_ids.ids
+                    and p.state not in ('done', 'cancel')
+                )
+                for p in auto_sam_pickings:
+                    p.action_cancel()
+
+        return res
 
     def action_quick_fill_scale_input(self):
-        """Tự động cập nhật khối lượng đá thô cấp liệu vào dòng nguyên liệu tiêu hao."""
+        """Tự động cập nhật khối lượng đá thô cấp liệu vào dòng nguyên liệu tiêu hao
+        và đồng bộ Lệnh chuyển hàng (stock.picking) liên quan:
+        1. Cập nhật số lượng tiêu hao trên đúng dòng nguyên liệu đá thô của MO.
+        2. Nếu Lệnh chuyển hàng chưa Done -> cập nhật lại số lượng trên phiếu chuyển hàng.
+        3. Nếu Lệnh chuyển hàng đã Done:
+           - Thực tế nhiều hơn ban đầu -> Tự động sinh phiếu chuyển hàng bổ sung (+ chênh lệch).
+           - Thực tế ít hơn ban đầu -> Tự động sinh phiếu trả hàng (- chênh lệch) về bãi kho.
+        """
         self.ensure_one()
         if self.raw_stone_input_qty <= 0:
             raise UserError(_('Vui lòng nhập Khối lượng đá thô cấp liệu lớn hơn 0!'))
-        for move in self.move_raw_ids:
-            move.quantity = self.raw_stone_input_qty
-            if 'product_uom_qty' in move._fields and not move.product_uom_qty:
-                move.product_uom_qty = self.raw_stone_input_qty
+
+        target_move = self._get_quarry_raw_stone_move()
+        if not target_move:
+            raise UserError(_('Không tìm thấy dòng nguyên liệu đá thô phù hợp trong tab Nguyên Liệu để cập nhật!'))
+
+        new_qty = self.raw_stone_input_qty
+        prod = target_move.product_id
+
+        # 1. Cập nhật đúng dòng nguyên liệu đá thô trên MO
+        target_move.quantity = new_qty
+        if 'product_uom_qty' in target_move._fields:
+            target_move.product_uom_qty = new_qty
+
+        # 2. Tìm các lệnh chuyển hàng (stock.picking) liên quan đến việc cấp liệu cho MO
+        related_pickings = self._get_related_component_pickings(target_move)
+
+        # Lọc các dòng move trong phiếu chuyển kho chuyển đúng sản phẩm này
+        component_moves = self.env['stock.move']
+        for p in related_pickings:
+            component_moves |= p.move_ids.filtered(
+                lambda m: m.product_id == prod and m.state != 'cancel'
+            )
+
+        messages = [
+            _('1. Tab Nguyên Liệu: Đã cập nhật %s thành %s Tấn.') % (prod.display_name, new_qty)
+        ]
+        notification_type = 'success'
+
+        if not component_moves:
+            messages.append(_('2. Lệnh Chuyển Hàng: Chưa phát sinh phiếu chuyển kho linh kiện nào cho lệnh này.'))
+        else:
+            done_moves = component_moves.filtered(lambda m: m.state == 'done')
+            undone_moves = component_moves.filtered(lambda m: m.state != 'done')
+
+            if undone_moves:
+                # KỊCH BẢN 1: Còn lệnh chuyển hàng CHƯA DONE -> Cập nhật trực tiếp số lượng
+                done_qty = sum(m.quantity or m.product_uom_qty for m in done_moves)
+                needed_for_undone = max(0.0, new_qty - done_qty)
+
+                primary_undone_move = undone_moves[0]
+                primary_undone_move.product_uom_qty = needed_for_undone
+                if primary_undone_move.quantity:
+                    primary_undone_move.quantity = needed_for_undone
+
+                for extra_undone in undone_moves[1:]:
+                    extra_undone.product_uom_qty = 0.0
+                    if extra_undone.quantity:
+                        extra_undone.quantity = 0.0
+
+                picking_names = ", ".join(undone_moves.mapped('picking_id.name'))
+                messages.append(
+                    _('2. Lệnh Chuyển Hàng [%s] (Chưa Done): Đã cập nhật lại số lượng cần chuyển thành %s Tấn.') % (
+                        picking_names, round(needed_for_undone, 2)
+                    )
+                )
+            else:
+                # KỊCH BẢN 2: TẤT CẢ các lệnh chuyển hàng ĐÃ DONE
+                total_done_qty = sum(m.quantity or m.product_uom_qty for m in done_moves)
+                delta = new_qty - total_done_qty
+                ref_picking = done_moves[0].picking_id
+
+                if abs(delta) < 0.001:
+                    messages.append(
+                        _('2. Lệnh Chuyển Hàng: Khối lượng thực tế trùng khớp với khối lượng đã chuyển (%s Tấn).') % total_done_qty
+                    )
+                elif delta > 0:
+                    # KỊCH BẢN 2A: Thực tế NHIỀU HƠN -> Tạo Phiếu Chuyển Bổ Sung (+delta)
+                    new_picking = self._create_extra_component_picking(target_move, delta, ref_picking)
+                    messages.append(
+                        _('2. Lệnh Chuyển Hàng: Phiếu trước đã hoàn tất (%s Tấn). Đã tự động tạo thêm Phiếu Chuyển Bổ Sung [%s] cho phần chênh lệch +%s Tấn!') % (
+                            round(total_done_qty, 2), new_picking.name, round(delta, 2)
+                        )
+                    )
+                else:
+                    # KỊCH BẢN 2B: Thực tế ÍT HƠN -> Tạo Phiếu Trả Hàng Thừa (-delta)
+                    return_qty = abs(delta)
+                    return_picking = self._create_return_component_picking(target_move, return_qty, ref_picking)
+                    messages.append(
+                        _('2. Lệnh Chuyển Hàng: Phiếu trước đã xuất %s Tấn (thực tế chỉ dùng %s Tấn). Đã tự động tạo Phiếu Trả Hàng [%s] hoàn trả %s Tấn về bãi kho!') % (
+                            round(total_done_qty, 2), round(new_qty, 2), return_picking.name, round(return_qty, 2)
+                        )
+                    )
+                    notification_type = 'warning'
+
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Thành Công'),
-                'message': _('Đã cập nhật khối lượng đá thô cấp liệu (%s Tấn) vào nguyên liệu tiêu hao!') % self.raw_stone_input_qty,
-                'type': 'success',
-                'sticky': False,
+                'title': _('Đồng Bộ Cấp Liệu Thành Công'),
+                'message': " \n".join(messages),
+                'type': notification_type,
+                'sticky': True if notification_type in ('warning', 'danger') else False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
             }
         }

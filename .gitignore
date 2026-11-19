@@ -6,6 +6,7 @@ _build/
 !.gitignore
 !.gitkeep
 !.github
+!.agents/
 !.mailmap
 !.weblate.json
 # compiled python files
@@ -58,5 +59,7 @@ run.sh
 
 /config
 #Docker
-docker-compose.yml
-Dockerfile
+# docker-compose.yml
+# Dockerfile
+
+/.agents

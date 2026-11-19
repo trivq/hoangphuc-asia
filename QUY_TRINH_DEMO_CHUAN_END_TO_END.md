@@ -187,9 +187,9 @@ flowchart TD
    - Khối lượng đá thô cấp vào phễu: `220.0 Tấn`.
    - Bấm nút **"Áp Đá Thô Cấp Liệu"** trên thanh Header $\rightarrow$ Hệ thống tự động điền `220 Tấn Đá Hộc Khai Thác Mỏ` vào danh sách nguyên liệu tiêu hao!
 2. **Kiểm soát dừng máy Downtime (BR-04)**:
-   - Thêm dòng vào bảng **Nhật Ký Dừng Máy**: Chọn giờ bắt đầu, kết thúc hoặc nhập trực tiếp Thời lượng = `15 phút`, bỏ trống ô giải trình.
+   - Thử nhập: Thời gian dừng máy = `15 phút`, bỏ trống ô giải trình.
    - Bấm nút Hoàn tất sản xuất $\rightarrow$ Hệ thống cảnh báo đỏ:
-     > *"CẢNH BÁO BR-04: Có 1 lượt dừng máy từ 10 phút trở lên chưa có giải trình kỹ thuật! Bắt buộc nhập đầy đủ giải trình sự cố dừng máy trước khi chốt sản xuất!"*
+     > *"CẢNH BÁO BR-04: Thời gian dừng máy >= 10 phút (15 phút). Bắt buộc nhập Giải trình sự cố dừng máy trước khi chốt sản xuất!"*
    - Chọn mã nguyên nhân: `Tắc Phễu / Kẹt Đá Quá Cỡ`.
    - Nhập giải trình: *"Kẹt đá tảng >800mm, đã dừng khẩn cấp và dùng búa thủy lực đập nhỏ thông phễu 15 phút."*
 3. **Chốt lệnh sản xuất & Bàn giao nhập bãi (Luồng 4.5)**:

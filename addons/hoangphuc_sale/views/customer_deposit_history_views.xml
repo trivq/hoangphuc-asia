@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List / Tree View -->
+    <record id="view_customer_deposit_history_list" model="ir.ui.view">
+        <field name="name">customer.deposit.history.list</field>
+        <field name="model">customer.deposit.history</field>
+        <field name="arch" type="xml">
+            <list string="Lịch Sử Ký Quỹ Mỏ Đá"
+                  decoration-success="transaction_type == 'deposit'"
+                  decoration-danger="transaction_type == 'deduct'"
+                  decoration-warning="transaction_type == 'refund'">
+                <field name="date" string="Thời Gian"/>
+                <field name="name" string="Mã Giao Dịch"/>
+                <field name="partner_id" string="Khách Hàng"/>
+                <field name="transaction_type" widget="badge"
+                       decoration-success="transaction_type == 'deposit'"
+                       decoration-danger="transaction_type == 'deduct'"
+                       decoration-warning="transaction_type == 'refund'"/>
+                <field name="amount" decoration-bf="1"/>
+                <field name="balance_after"/>
+                <field name="payment_method" optional="show"/>
+                <field name="bank_ref" optional="show"/>
+                <field name="order_id" optional="show"/>
+                <field name="user_id" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'posted'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_customer_deposit_history_form" model="ir.ui.view">
+        <field name="name">customer.deposit.history.form</field>
+        <field name="model">customer.deposit.history</field>
+        <field name="arch" type="xml">
+            <form string="Giao Dịch Ký Quỹ">
+                <header>
+                    <button name="action_post" string="Xác Nhận Giao Dịch" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Hủy Giao Dịch" type="object" class="btn-secondary" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Mã Giao Dịch"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Thông Tin Khách Hàng &amp; Giao Dịch">
+                            <field name="partner_id" readonly="state != 'draft' and id"/>
+                            <field name="transaction_type" widget="radio" readonly="state != 'draft' and id"/>
+                            <field name="date" readonly="state != 'draft' and id"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group string="Giá Trị &amp; Số Dư">
+                            <field name="amount" readonly="state != 'draft' and id"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="balance_after"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Chứng Từ Nạp Tiền (Sao Kê / Phiếu Thu)" invisible="transaction_type != 'deposit'">
+                            <group>
+                                <group string="Phương Thức Nạp Tiền">
+                                    <field name="payment_method" widget="radio" readonly="state != 'draft' and id"/>
+                                    <field name="bank_ref" placeholder="Số tham chiếu chuyển khoản hoặc số phiếu thu..." readonly="state != 'draft' and id"/>
+                                </group>
+                                <group string="Ảnh Chụp Phiếu Thu / Sao Kê">
+                                    <field name="proof_image" widget="image" class="oe_avatar" options="{'size': [200, 200]}"/>
+                                </group>
+                            </group>
+                            <group string="Tập Tin Đính Kèm">
+                                <field name="proof_attachment_ids" widget="many2many_binary"/>
+                            </group>
+                        </page>
+                        <page string="Thông Tin Đơn Hàng" invisible="transaction_type != 'deduct'">
+                            <group>
+                                <field name="order_id" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Ghi Chú">
+                            <field name="notes" placeholder="Ghi chú nội dung giao dịch..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_customer_deposit_history_search" model="ir.ui.view">
+        <field name="name">customer.deposit.history.search</field>
+        <field name="model">customer.deposit.history</field>
+        <field name="arch" type="xml">
+            <search string="Tìm Kiếm Giao Dịch Ký Quỹ">
+                <field name="name" string="Mã Giao Dịch"/>
+                <field name="partner_id" string="Khách Hàng"/>
+                <field name="order_id" string="Đơn Hàng"/>
+                <field name="bank_ref" string="Số GD Ngân Hàng"/>
+                <separator/>
+                <filter name="filter_deposit" string="Nạp Tiền Ký Quỹ" domain="[('transaction_type', '=', 'deposit')]"/>
+                <filter name="filter_deduct" string="Trừ Tiền Xuất Đá" domain="[('transaction_type', '=', 'deduct')]"/>
+                <filter name="filter_refund" string="Hoàn Trả Tiền Cọc" domain="[('transaction_type', '=', 'refund')]"/>
+                <separator/>
+                <filter name="filter_posted" string="Đã Xác Nhận" domain="[('state', '=', 'posted')]"/>
+                <group>
+                    <filter name="group_partner" string="Khách Hàng" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Loại Giao Dịch" context="{'group_by': 'transaction_type'}"/>
+                    <filter name="group_date" string="Ngày Giao Dịch" context="{'group_by': 'date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action Window -->
+    <record id="action_customer_deposit_history" model="ir.actions.act_window">
+        <field name="name">Lịch Sử Ký Quỹ Khách Hàng</field>
+        <field name="res_model">customer.deposit.history</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_customer_deposit_history_search"/>
+        <field name="context">{'search_default_filter_posted': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Chưa có giao dịch ký quỹ nào được ghi nhận.
+            </p>
+            <p>
+                Ghi nhận các khoản nạp tiền đặt cọc (kèm sao kê/phiếu thu) và trừ tiền khi xuất đá mỏ.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item under Sale / Orders -->
+    <menuitem id="menu_customer_deposit_history"
+              name="Lịch Sử Ký Quỹ Khách Hàng"
+              parent="sale.sale_order_menu"
+              action="action_customer_deposit_history"
+              sequence="20"/>
+</odoo>

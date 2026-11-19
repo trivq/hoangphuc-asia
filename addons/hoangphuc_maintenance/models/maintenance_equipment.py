@@ -1,13 +1,26 @@
-from odoo import models, fields, _
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
 class MaintenanceEquipment(models.Model):
     _inherit = 'maintenance.equipment'
+    _rec_names_search = ['name', 'vehicle_plate', 'driver_name']
 
     vehicle_plate = fields.Char(
         string='Biển Số / Số Hiệu Máy Mỏ',
         tracking=True,
         help='Biển số xe ben hoặc số hiệu máy xúc (VD: EX-01, 36C-999.88).'
+    )
+    driver_name = fields.Char(
+        string='Họ Tên Lái Xe / Vận Hành',
+        tracking=True,
+        help='Họ và tên tài xế xe ben hoặc thợ vận hành máy mỏ phụ trách phương tiện này.'
+    )
+    tare_weight = fields.Float(
+        string='Khối Lượng Bì Chuẩn (Kg)',
+        digits=(12, 2),
+        default=0.0,
+        tracking=True,
+        help='Khối lượng bì (xe không tải) được cân chuẩn hoặc theo đăng kiểm.'
     )
     equipment_quarry_type = fields.Selection([
         ('excavator', 'Máy Xúc Đào Thủy Lực'),
@@ -41,6 +54,13 @@ class MaintenanceEquipment(models.Model):
         string='Số Phiếu Cấp Dầu',
         compute='_compute_fuel_log_count'
     )
+
+    @api.depends('name', 'vehicle_plate')
+    def _compute_display_name(self):
+        super()._compute_display_name()
+        for record in self:
+            if record.vehicle_plate:
+                record.display_name = f"[{record.vehicle_plate}] {record.name}"
 
     def _compute_fuel_log_count(self):
         for eq in self:
